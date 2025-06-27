@@ -1,5 +1,5 @@
 # Discord CLI Bot
-CLI 환경에서 디스코드 봇을 통한 디스코드 사용
+A terminal-based Discord bot that displays real-time messages and allows message sending through command-line interface.
 
 ## 프로젝트 설정 및 실행 가이드
 
