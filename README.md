@@ -48,7 +48,7 @@ your_bot_project/
 ├── .env                  # Discord 봇 토큰 저장
 ├── main.py               # 봇의 메인 실행 파일 및 CLI 루프
 ├── cogs/                 # 봇의 기능(Cog)들을 모아두는 디렉토리
-│   └── chatbridge.py    # Discord 메시지 및 채널 관리 기능
+│   └── chatbridge.py     # Discord 메시지 및 채널 관리 기능
 └── cli/                  # CLI 명령어 처리 로직을 모아두는 디렉토리
     └── cli_handler.py    # CLI 명령어 파싱 및 실행 핸들러
 ```
