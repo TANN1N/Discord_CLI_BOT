@@ -4,8 +4,6 @@ from datetime import timedelta
 import asyncio
 import os
 
-from pandas import Timestamp
-
 class ChatBridge(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -25,6 +23,8 @@ class ChatBridge(commands.Cog):
             return
 
         timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
+
+        processed_content = await self.process_message_mentions(message)
 
         if message.channel == self.channel: # 현재 설정된 채널의 메시지
             # 이전과 동일하게 출력
@@ -93,6 +93,23 @@ class ChatBridge(commands.Cog):
         
         return False # 모든 시도 실패
 
+    async def process_message_mentions(self, message: discord.Message) -> str:
+        # 메시지 내용을 파싱하여 멘션(사용자, 역할, 채널)을 이름으로 변환
+        content = message.content
+        
+        for member in message.mentions:
+            display_name = member.display_name
+            content = content.replace(f"<@{member.id}>", f"@{display_name}")
+            content = content.replace(f"<@!{member.id}>", f"@{display_name}")
+        
+        for role in message.role_mentions:
+            content = content.replace(f"<@&{role.id}>", f"@{role.name}")
+        
+        for channel in message.channel_mentions:
+            content = content.replace(f"<#{channel.id}>", f"#{channel.name}")
+        
+        return content
+
     async def fetch_recent_messages_cli(self, count=20):
         if not self.channel:
             print("[오류] 먼저 채널을 선택하세요.")
@@ -115,7 +132,8 @@ class ChatBridge(commands.Cog):
         # 가장 오래된 메시지부터 출력하도록 순서 뒤집기
         for msg in reversed(messages): 
             timestamp = (msg.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
-            print(f"[{timestamp}] {msg.author.display_name}: {msg.content}")
+            processed_content = await self.process_message_mentions(msg)
+            print(f"[{timestamp}] {msg.author.display_name}: {processed_content}")
 
     async def send_message(self, content):
         if not self.channel:
