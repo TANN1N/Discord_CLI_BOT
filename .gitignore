@@ -24,3 +24,5 @@ htmlcov/
 /test/
 
 /discord_cli_bot/
+
+bot.txt
