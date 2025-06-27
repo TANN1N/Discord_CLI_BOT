@@ -1,2 +1,66 @@
-# Discord_CLI_BOT
-Discord bot that reads messages and print on users cmd
+# Discord CLI Bot
+CLI 환경에서 디스코드 봇을 통한 디스코드 사용
+
+## 프로젝트 설정 및 실행 가이드
+
+이 봇은 Discord API를 사용하여 CLI (Command Line Interface) 환경에서 Discord와 상호작용할 수 있게 해줍니다. 봇을 실행하기 위해 필요한 모듈 설치 및 환경 설정 방법을 안내합니다.
+
+### 1\. 필수 Python 모듈 설치
+
+프로젝트에 필요한 모든 라이브러리는 `pip`를 통해 설치할 수 있습니다. 터미널 또는 명령 프롬프트에서 다음 명령어를 실행하세요.
+
+```bash
+pip install discord.py python-dotenv asyncio
+```
+
+  * **`discord.py`**: Discord API와 상호작용하는 데 사용되는 비동기 Python 라이브러리입니다.
+  * **`python-dotenv`**: `.env` 파일에 저장된 환경 변수를 안전하게 로드하는 데 필요합니다.
+  * **`asyncio`**: Python의 비동기 프로그래밍을 위한 표준 라이브러리로, 봇의 효율적인 동작에 필수적입니다. (대부분의 Python 환경에 기본 포함되어 있습니다.)
+
+-----
+
+### 2\. Discord 봇 토큰 설정 (`.env` 파일)
+
+봇이 Discord에 로그인하려면 **봇 토큰**이 필요합니다. 이 토큰은 **매우** 중요하며 **절대** 외부에 노출되지 않도록 `.env` 파일에 저장하여 관리하는 것이 가장 안전합니다.
+
+1.  **`.env` 파일 생성**: 프로젝트의 루트 디렉토리(예: `main.py` 파일이 있는 곳)에 `.env`라는 이름의 파일을 생성하세요.
+
+2.  **봇 토큰 추가**: 생성한 `.env` 파일에 다음 형식으로 Discord 봇 토큰을 추가합니다. `YOUR_DISCORD_BOT_TOKEN_HERE` 부분을 실제 봇 토큰으로 교체해야 합니다.
+
+    ```dotenv
+    DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN_HERE
+    ```
+
+      * **봇 토큰 얻는 방법**:
+        1.  [Discord Developer Portal](https://discord.com/developers/applications)에 접속하여 애플리케이션을 선택하거나 새로 만듭니다.
+        2.  왼쪽 메뉴에서 **Bot** 탭을 클릭합니다.
+        3.  **Add Bot** 버튼을 클릭하여 봇을 생성합니다.
+        4.  **TOKEN** 섹션에서 **Reset Token**을 클릭하고 토큰을 복사합니다. 이 토큰은 **반드시** 외부에 유출되지 않도록 주의해야 합니다.
+
+-----
+
+### 3\. 프로젝트 파일 구조
+
+봇은 다음과 같은 디렉토리 구조를 가지고 있습니다.
+
+```
+your_bot_project/
+├── .env                  # Discord 봇 토큰 저장
+├── main.py               # 봇의 메인 실행 파일 및 CLI 루프
+├── cogs/                 # 봇의 기능(Cog)들을 모아두는 디렉토리
+│   └── chatbridge.py    # Discord 메시지 및 채널 관리 기능
+└── cli/                  # CLI 명령어 처리 로직을 모아두는 디렉토리
+    └── cli_handler.py    # CLI 명령어 파싱 및 실행 핸들러
+```
+
+-----
+
+### 4\. 봇 실행 방법
+
+모든 설정이 완료되었다면, 터미널 또는 명령 프롬프트에서 `main.py` 파일을 실행하여 봇을 시작할 수 있습니다.
+
+```bash
+python main.py
+```
+
+봇이 성공적으로 연결되면, 서버와 채널을 선택하라는 초기 설정 메시지가 나타나고, 이후 CLI를 통해 Discord와 상호작용할 수 있게 됩니다.
