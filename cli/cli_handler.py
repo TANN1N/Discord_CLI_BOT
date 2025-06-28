@@ -27,20 +27,24 @@ class CLIHandler:
             '/quit': self._quit,
         }
 
+    async def handle_command(self, command: str, arg: str) -> bool:
+        handler = self.commands.get(command)
+        if handler:
+            return await handler(arg)
+        else:
+            print(f"[오류] 알 수 없는 명령어입니다: {command}")
+            print("명령어 도움말을 보려면 '/help'를 입력하세요.")
+            return False
+
     async def _help(self, arg: str):
         """명령어 도움말을 표시합니다."""
-        print("\n--- CLI 명령어 도움말 ---")
-        print("  /listguilds (/lg)                  : 봇이 참여하고 있는 서버 목록을 표시합니다.")
-        print("  /setguild (/sg) <인덱스>           : 서버 인덱스를 사용하여 현재 서버를 설정합니다.")
-        print("  /listchannels (/lc)                : 현재 선택된 서버의 채널 목록을 표시합니다.")
-        print("  /setchannel (/sc) <인덱스|ID|이름> : 채널 인덱스, ID 또는 이름을 사용하여 현재 채널을 설정합니다.")
-        print("  /read (/r) [개수]                  : 현재 채널의 최근 메시지를 지정된 개수(기본값 20)만큼 불러옵니다.")
-        print("  /multiline (/ml)                   : 여러 줄 메시지 입력 모드로 전환합니다. 입력을 마치려면 새로운 줄에 @END를 입력하세요.")
-        print("  /attach (/a) <파일경로> [메시지]   : 지정된 파일을 현재 채널에 첨부합니다. (예: /a C:/path/file.png '캡션')")
-        print("  /clear (/cls)                      : 터미널 화면을 지웁니다.")
-        print("  /quit                              : 봇을 종료합니다.")
-        print("  (일반 메시지 입력)                 : 현재 채널로 메시지를 전송합니다.")
-        print("------------------------\n")
+        print("사용 가능한 명령어:")
+        for cmd, handler in self.commands.items():
+            if len(cmd) <= 3:
+                continue
+            doc = handler.__doc__.strip() if handler.__doc__  else ""
+            print(f"{cmd:<15} - {doc}")
+        return False
 
     async def _list_guilds(self, arg: str):
         """봇이 참여하고 있는 서버 목록을 표시합니다."""
@@ -100,7 +104,7 @@ class CLIHandler:
             return False
 
     async def _read(self, arg: str):
-        """현재 채널의 최근 메시지를 불러옵니다."""
+        """현재 채널의 최근 메시지를 지정된 개수(기본값 20)만큼 불러옵니다."""
         count = 20
         if arg:
             try:
@@ -119,10 +123,7 @@ class CLIHandler:
         print("[정보] 화면이 지워졌습니다.")
 
     async def _multiline_input(self, chat_bridge_cog: ChatBridge):
-        """
-        여러 줄 메시지를 입력받아 현재 채널에 전송합니다.
-        입력을 마치려면 새로운 줄에 '@END'를 입력하세요.
-        """
+        """여러 줄 메시지 입력 모드로 전환합니다. 입력을 마치려면 새로운 줄에 @END를 입력하세요."""
         print("\n--- 여러 줄 메시지 입력 모드 ---")
         print("  입력을 마치려면 새로운 줄에 '@END'를 입력하고 Enter를 누르세요.")
         print("----------------------------")
@@ -143,11 +144,7 @@ class CLIHandler:
         print("\n--- 여러 줄 메시지 입력 모드 종료 ---\n")
 
     async def _attach_file(self, arg: str):
-        """
-        파일을 현재 채널에 첨부합니다.
-        사용법: /attach <파일경로> [선택적 메시지]
-        예: /attach C:/Users/User/Pictures/image.png "이것은 첨부 이미지입니다."
-        """
+        """지정된 파일을 현재 채널에 첨부합니다. (예: /a C:/path/file.png '캡션')"""
         if not arg:
             print("[오류] 첨부할 파일 경로를 입력하세요. 사용법: /attach <파일경로> [선택적 메시지]")
             return
@@ -173,17 +170,3 @@ class CLIHandler:
         print("[정보] 봇을 종료합니다...")
         await self.chat_bridge_cog.bot.close()
         return True
-
-    async def handle_command(self, command: str, arg: str) -> bool:
-        """주어진 명령어를 처리하고, 봇 종료 여부를 반환합니다."""
-        handler = self.commands.get(command)
-        if handler:
-            if command == '/quit':
-                return await handler(arg)
-            else:
-                await handler(arg)
-                return False
-        else:
-            print(f"[오류] 알 수 없는 명령어입니다: {command}")
-            print("명령어 도움말을 보려면 '/help'를 입력하세요.")
-            return False
