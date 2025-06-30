@@ -1,4 +1,3 @@
-from imaplib import Commands
 import os
 import asyncio
 from discord.ext import commands

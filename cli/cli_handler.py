@@ -157,7 +157,7 @@ class CLIHandler:
         # 파일 경로에 공백이 포함될 수 있으므로, 경로를 먼저 추출
         parts = arg.split(' ', 1)
         file_path = parts[0]
-        message_content = parts[1] if len(parts) > 1 else None # 메시지 없으면 None
+        message_content = parts[1] if len(parts) > 1 else None
 
         # 파일 경로에 따옴표가 있을 경우 제거 (사용자가 편의상 붙였을 수 있음)
         file_path = file_path.strip('\'"')

@@ -46,7 +46,8 @@ class ChatBridge(commands.Cog):
         guilds = self.bot.guilds
         if 1 <= idx <= len(guilds):
             self.guild = guilds[idx - 1]
-            self.channel = None # 서버 변경 시 채널 초기화
+            self.channel = None
+            # TODO: /sg 실행 직후와 /lc 이후 내부적으로 가지고 있는 채널의 순서가 다름. 사용성의 개선을 위해 패치할 것
             self.channel_list = self.guild.text_channels
             return True
         return False
