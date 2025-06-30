@@ -30,7 +30,11 @@ class CLIHandler:
     async def handle_command(self, command: str, arg: str) -> bool:
         handler = self.commands.get(command)
         if handler:
-            return await handler(arg)
+            if command == '/quit':
+                return await handler(arg)
+            else:
+                await handler(arg)
+                return False
         else:
             print(f"[오류] 알 수 없는 명령어입니다: {command}")
             print("명령어 도움말을 보려면 '/help'를 입력하세요.")
