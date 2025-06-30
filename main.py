@@ -7,6 +7,54 @@ from dotenv import load_dotenv
 from cogs.chatbridge import ChatBridge
 from cli.cli_handler import CLIHandler
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.patch_stdout import patch_stdout
+
+COMMANDS = [
+    "/help", "/clear", "/quit",
+    "/listguilds", "setguild",
+    "/listchannels", "/setchannel",
+    "/read", "/multiline", "/attach"
+]
+
+command_completer = WordCompleter(COMMANDS, ignore_case=True)
+
+async def prompt_cli_loop(chat_bridge_cog: ChatBridge):
+    session = PromptSession(completer=command_completer)
+    cli_handler = CLIHandler(chat_bridge_cog)
+
+    if not await select_guild(cli_handler):
+        await chat_bridge_cog.bot.close()
+        return
+
+    if not await select_channel(cli_handler):
+        await chat_bridge_cog.bot.close()
+        return
+
+    print("-----------------------------")
+    print("명령어 도움말은 '/help'를 입력하세요.")
+    with patch_stdout():
+        while True:
+            try:
+                user_input = await session.prompt_async("> ")
+                if not user_input.strip():
+                    continue
+                if user_input.startswith('/'):
+                    parts = user_input.split(' ', 1)
+                    command = parts[0].lower()
+                    arg = parts[1] if len(parts) > 1 else ""
+                    if await cli_handler.handle_command(command, arg):
+                        break
+                elif user_input.strip():
+                    await chat_bridge_cog.send_message(user_input)
+            except (EOFError, KeyboardInterrupt):
+                print("\n봇을 종료합니다.")
+                await chat_bridge_cog.bot.close()
+                break
+            except Exception as e:
+                print(f"[CLI 오류] 예외 발생: {e}")
+
 async def select_guild(cli_handler):
     print("\n--- 초기 봇 설정: 서버 선택 ---")
     while True:
@@ -33,41 +81,6 @@ async def select_channel(cli_handler):
             return True
         print("[실패] 다시 시도해주세요.")
 
-async def command_loop(cli_handler, chat_bridge_cog):
-    print("-----------------------------")
-    print("명령어 도움말은 '/help'를 입력하세요.")
-    while True:
-        try:
-            user_input = await asyncio.to_thread(input, "> ")
-            if user_input.startswith('/'):
-                parts = user_input.split(' ', 1)
-                command = parts[0].lower()
-                arg = parts[1] if len(parts) > 1 else ""
-                if await cli_handler.handle_command(command, arg):
-                    break
-            elif user_input.strip():
-                await chat_bridge_cog.send_message(user_input)
-        except EOFError:
-            print("\nEOF 감지: 봇을 종료합니다.")
-            await chat_bridge_cog.bot.close()
-            break
-        except Exception as e:
-            print(f"[CLI 오류] 예외 발생: {e}")
-
-async def cli_loop(chat_bridge_cog):
-    await asyncio.sleep(1)
-    cli_handler = CLIHandler(chat_bridge_cog)
-
-    if not await select_guild(cli_handler):
-        await chat_bridge_cog.bot.close()
-        return
-
-    if not await select_channel(cli_handler):
-        await chat_bridge_cog.bot.close()
-        return
-
-    await command_loop(cli_handler, chat_bridge_cog)
-
 async def main():
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
@@ -86,7 +99,7 @@ async def main():
     async def on_ready():
         print(f"\n--- 봇 연결 성공! ---")
         print(f"로그인 완료: {bot.user.name} (ID: {bot.user.id})")
-        asyncio.create_task(cli_loop(chat_bridge_cog))
+        asyncio.create_task(prompt_cli_loop(chat_bridge_cog))
 
     @bot.event
     async def on_connect():
@@ -108,7 +121,7 @@ async def main():
         print(f"\nFATAL ERROR: 봇 시작 중 오류: {e}")
 
 if __name__ == "__main__":
-    print("봇 실행 및 CLI 인터페이스 시작.")
+    print("봇 실행 및 고급 CLI 시작.")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
