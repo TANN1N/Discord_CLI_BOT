@@ -26,11 +26,12 @@ your_bot_project/
 프로젝트에 필요한 모든 라이브러리는 `pip`를 통해 설치할 수 있습니다. 터미널 또는 명령 프롬프트에서 다음 명령어를 실행하세요.
 
 ```bash
-pip install discord.py python-dotenv
+pip install discord.py python-dotenv prompt_toolkit
 ```
 
   * **`discord.py`**: Discord API와 상호작용하는 데 사용되는 비동기 Python 라이브러리입니다.
   * **`python-dotenv`**: `.env` 파일에 저장된 환경 변수를 안전하게 로드하는 데 필요합니다.
+  * **`prompt_toolkit`**: 고급 CLI 기능(예: 명령줄 편집, 자동 완성)을 제공하는 데 사용됩니다.
 
 -----
 
