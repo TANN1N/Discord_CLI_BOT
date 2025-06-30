@@ -5,21 +5,36 @@ A terminal-based Discord bot that displays real-time messages and allows message
 
 이 봇은 Discord API를 사용하여 CLI (Command Line Interface) 환경에서 Discord와 상호작용할 수 있게 해줍니다. 봇을 실행하기 위해 필요한 모듈 설치 및 환경 설정 방법을 안내합니다.
 
-### 1\. 필수 Python 모듈 설치
+### 1\. 프로젝트 파일 구조
+
+봇은 다음과 같은 디렉토리 구조를 가지고 있습니다.
+
+```
+your_bot_project/
+├── .env                  # Discord 봇 토큰 저장
+├── main.py               # 봇의 메인 실행 파일 및 CLI 루프
+├── cogs/                 # 봇의 기능(Cog)들을 모아두는 디렉토리
+│   └── chatbridge.py     # Discord 메시지 및 채널 관리 기능
+└── cli/                  # CLI 명령어 처리 로직을 모아두는 디렉토리
+    └── cli_handler.py    # CLI 명령어 파싱 및 실행 핸들러
+```
+
+-----
+
+### 2\. 필수 Python 모듈 설치
 
 프로젝트에 필요한 모든 라이브러리는 `pip`를 통해 설치할 수 있습니다. 터미널 또는 명령 프롬프트에서 다음 명령어를 실행하세요.
 
 ```bash
-pip install discord.py python-dotenv asyncio
+pip install discord.py python-dotenv
 ```
 
   * **`discord.py`**: Discord API와 상호작용하는 데 사용되는 비동기 Python 라이브러리입니다.
   * **`python-dotenv`**: `.env` 파일에 저장된 환경 변수를 안전하게 로드하는 데 필요합니다.
-  * **`asyncio`**: Python의 비동기 프로그래밍을 위한 표준 라이브러리로, 봇의 효율적인 동작에 필수적입니다. (대부분의 Python 환경에 기본 포함되어 있습니다.)
 
 -----
 
-### 2\. Discord 봇 토큰 설정 (`.env` 파일)
+### 3\. Discord 봇 토큰 설정 (`.env` 파일)
 
 봇이 Discord에 로그인하려면 **봇 토큰**이 필요합니다. 이 토큰은 **매우** 중요하며 **절대** 외부에 노출되지 않도록 `.env` 파일에 저장하여 관리하는 것이 가장 안전합니다.
 
@@ -37,21 +52,11 @@ pip install discord.py python-dotenv asyncio
         3.  **Add Bot** 버튼을 클릭하여 봇을 생성합니다.
         4.  **TOKEN** 섹션에서 **Reset Token**을 클릭하고 토큰을 복사합니다. 이 토큰은 **반드시** 외부에 유출되지 않도록 주의해야 합니다.
 
------
+3. **대상 서버에 봇 초대**: 생성한 디스코드 봇을 사용하고자 하는 Discord 서버에 초대해야 합니다.
 
-### 3\. 프로젝트 파일 구조
+    - 봇 초대 링크 생성: [Discord Developer Portal](https://discord.com/developers/applications)의 Bot 탭에서 OAuth2 탭으로 이동합니다. SCOPES에서 bot을 선택하고, 필요한 BOT PERMISSIONS (예: Send Messages, Read Message History, View Channels 등)를 선택한 후 생성된 URL을 통해 봇을 서버에 초대합니다.
 
-봇은 다음과 같은 디렉토리 구조를 가지고 있습니다.
-
-```
-your_bot_project/
-├── .env                  # Discord 봇 토큰 저장
-├── main.py               # 봇의 메인 실행 파일 및 CLI 루프
-├── cogs/                 # 봇의 기능(Cog)들을 모아두는 디렉토리
-│   └── chatbridge.py     # Discord 메시지 및 채널 관리 기능
-└── cli/                  # CLI 명령어 처리 로직을 모아두는 디렉토리
-    └── cli_handler.py    # CLI 명령어 파싱 및 실행 핸들러
-```
+    - 만약 봇이 서버에 초대되어 있지 않거나, 봇이 읽을 수 있는 텍스트 채널이 없는 경우 프로그램이 제대로 동작하지 않습니다
 
 -----
 
