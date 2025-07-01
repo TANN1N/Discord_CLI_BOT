@@ -1,8 +1,10 @@
+import os
+import asyncio
+import aiohttp
+
 import discord
 from discord.ext import commands
 from datetime import timedelta
-import os
-import asyncio
 
 class DiscordBotService:
     def __init__(self, bot: commands.Bot):

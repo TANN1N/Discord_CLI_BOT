@@ -1,5 +1,5 @@
-import asyncio
 import os
+import asyncio
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter, NestedCompleter, Completer, Completion
