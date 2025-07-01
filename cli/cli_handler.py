@@ -9,7 +9,7 @@ class CLIHandler:
         # 명령어와 해당 핸들러 메서드를 매핑합니다.
         self.commands = {
             '/help': self._help,
-            '/h': self._help, # 단축 명령어
+            '/h': self._help,
             '/listguilds': self._list_guilds,
             '/lg': self._list_guilds,
             '/setguild': self._set_guild,

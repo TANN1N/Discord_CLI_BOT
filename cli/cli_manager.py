@@ -42,6 +42,14 @@ class CLIManager:
             channel_input = await asyncio.to_thread(input, "채널 인덱스, ID 또는 이름을 입력하세요: ")
             if await self.bot_service.select_channel(channel_input.strip()):
                 print(f"[성공] 채널이 설정되었습니다: #{self.bot_service.current_channel.name}")
+                print("\n[정보] 채널 입장: 최근 메시지를 불러오는 중...")
+                messages = await self.bot_service.fetch_recent_messages()
+                if messages:
+                    for msg_line in messages:
+                        print(msg_line)
+                    print(f"[정보] 총 {len(messages)}개의 메시지를 불러왔습니다.")
+                else:
+                    print("[정보] 이 채널에는 아직 메시지가 없거나 불러올 수 없습니다.")
                 return True
             print("[실패] 다시 시도해 주세요.")
 
