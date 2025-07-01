@@ -185,4 +185,13 @@ class DiscordBotService:
             content = content.replace(f"<@&{role.id}>", f"@{role.name}")
         for channel in message.channel_mentions:
             content = content.replace(f"<#{channel.id}>", f"#{channel.name}")
-        return content
+        
+        file_attachments = []
+        if message.attachments:
+            for attachment in message.attachments:
+                file_attachments.append(f"📁 {attachment.filename}")
+        
+        if file_attachments:
+            return f"{message.author.display_name}: {content}\n[첨부 파일: {', '.join(file_attachments)}]"
+        else:
+            return f"{message.author.display_name}: {content}"
