@@ -14,9 +14,12 @@ your_bot_project/
 ├── .env                  # Discord 봇 토큰 저장
 ├── main.py               # 봇의 메인 실행 파일 및 CLI 루프
 ├── cogs/                 # 봇의 기능(Cog)들을 모아두는 디렉토리
-│   └── chatbridge.py     # Discord 메시지 및 채널 관리 기능
-└── cli/                  # CLI 명령어 처리 로직을 모아두는 디렉토리
-    └── cli_handler.py    # CLI 명령어 파싱 및 실행 핸들러
+│   └── chatbridge.py     # 봇의 이벤트 핸들러 (메시지 수신, 봇 준비 등)
+├── cli/                  # CLI 명령어 처리 로직을 모아두는 디렉토리
+│   ├── cli_handler.py    # CLI 명령어 파싱 및 실행 핸들러
+│   └── cli_manager.py    # CLI 세션 관리 및 상호작용 (프롬프트, 자동 완성(잠정 보류) 등)
+└── services/             # 봇의 핵심 비즈니스 로직 및 Discord API 상호작용
+    └── bot_service.py    # Discord 봇의 상태, 메시지 및 채널 관리 기능
 ```
 
 -----
@@ -26,12 +29,13 @@ your_bot_project/
 프로젝트에 필요한 모든 라이브러리는 `pip`를 통해 설치할 수 있습니다. 터미널 또는 명령 프롬프트에서 다음 명령어를 실행하세요.
 
 ```bash
-pip install discord.py python-dotenv prompt_toolkit
+pip install discord.py python-dotenv prompt_toolkit aiohttp
 ```
 
   * **`discord.py`**: Discord API와 상호작용하는 데 사용되는 비동기 Python 라이브러리입니다.
   * **`python-dotenv`**: `.env` 파일에 저장된 환경 변수를 안전하게 로드하는 데 필요합니다.
-  * **`prompt_toolkit`**: 고급 CLI 기능(예: 명령줄 편집, 자동 완성)을 제공하는 데 사용됩니다.
+  * **`prompt_toolkit`**: 고급 CLI 기능(예: 명령줄 편집)을 제공하는 데 사용됩니다.
+  * **`aiohtttp`**: 비동기 HTTP 요청을 처리하며, 특히 파일 다운로드에 사용됩니다.
 
 -----
 
@@ -55,9 +59,9 @@ pip install discord.py python-dotenv prompt_toolkit
 
 3. **대상 서버에 봇 초대**: 생성한 디스코드 봇을 사용하고자 하는 Discord 서버에 초대해야 합니다.
 
-    - 봇 초대 링크 생성: [Discord Developer Portal](https://discord.com/developers/applications)의 Bot 탭에서 OAuth2 탭으로 이동합니다. SCOPES에서 bot을 선택하고, 필요한 BOT PERMISSIONS (예: Send Messages, Read Message History, View Channels 등)를 선택한 후 생성된 URL을 통해 봇을 서버에 초대합니다.
+    - 봇 초대 링크 생성: [Discord Developer Portal](https://discord.com/developers/applications)의 Bot 탭에서 OAuth2 탭으로 이동합니다. SCOPES에서 `bot`을 선택하고, 필요한 BOT PERMISSIONS (예: Send Messages, Read Message History, View Channels 등)를 선택한 후 생성된 URL을 통해 봇을 서버에 초대합니다.
 
-    - 만약 봇이 서버에 초대되어 있지 않거나, 봇이 읽을 수 있는 텍스트 채널이 없는 경우 프로그램이 제대로 동작하지 않습니다
+    - **주의**: 만약 봇이 서버에 초대되어 있지 않거나, 봇이 읽을 수 있는 텍스트 채널이 없는 경우 프로그램이 제대로 동작하지 않습니다
 
 -----
 
@@ -72,7 +76,7 @@ python main.py
 봇이 성공적으로 연결되면, 서버와 채널을 선택하라는 초기 설정 메시지가 나타나고, 이후 CLI를 통해 Discord와 상호작용할 수 있게 됩니다.
 
 ### 5\. TODO
-- [ ] prompt-toolkit을 활용한 데모 제작
+- [ ] prompt-toolkit을 활용한 데모 제작 및 개선:
   - [x] 각 클래스 간의 결합도 낮추기, 참조 줄이기 필요
-  - [ ] 파일 다운로드 및 표시 기능 추가
-- [ ] textual을 사용한 완전 TUI 애플리케이션으로 변경
+  - [ ] 파일 다운로드 및 표시 기능 추가 (현재는 업로드 및 파일 확인만 가능)
+- [ ] **textual을 사용한 완전 TUI 애플리케이션으로 변경**
