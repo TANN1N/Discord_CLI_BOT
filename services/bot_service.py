@@ -141,7 +141,7 @@ class DiscordBotService:
         try:
             message = await self.current_channel.send(content)
             timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
-            print(f"[{timestamp}] 나 ({self.bot.user.display_name}): {message.content}")
+            print(f"[{timestamp}] {self.bot.user.display_name}: {message.content}")
             return True
         except discord.errors.Forbidden:
             print("[오류] 채널에 메시지를 보낼 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
