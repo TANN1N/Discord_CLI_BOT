@@ -125,7 +125,7 @@ class DiscordBotService:
             async for msg in self._current_channel.history(limit=count):
                 timestamp = (msg.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
                 processed_content = await self._process_message_mentions(msg)
-                cli_messages.append(f"[{timestamp}] {msg.author.display_name}: {processed_content}")
+                cli_messages.append(f"[{timestamp}] {processed_content}")
         except discord.errors.Forbidden:
             print("[오류] 채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
         except Exception as e:
@@ -166,7 +166,7 @@ class DiscordBotService:
             message = await self._current_channel.send(content=content, file=discord_file)
             
             timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
-            print(f"[{timestamp}] 나 ({self.bot.user.display_name}): (파일 첨부) {os.path.basename(file_path)}")
+            print(f"[{timestamp}] {self.bot.user.display_name}: (파일 첨부) {os.path.basename(file_path)}")
             if content:
                 print(f"  └ 메시지: {content}")
             return True
