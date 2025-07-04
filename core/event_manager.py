@@ -1,3 +1,4 @@
+from typing import Callable
 from collections import defaultdict
 
 class EventManager:
@@ -5,7 +6,7 @@ class EventManager:
     def __init__(self):
         self._listeners = defaultdict(list)
     
-    def subscribe(self, event_type: str, callback: function): # type hint function 괜찮은지 확인할 것
+    def subscribe(self, event_type: str, callback: Callable): # type hint function 괜찮은지 확인할 것
         """이벤트가 발생했을 때 호출된 콜백 함수를 등록합니다."""
         self._listeners[event_type].append(callback) # dict를 사용하는 것으로 여러개의 콜백 함수가 존재할 수 있도록 함
     
