@@ -5,9 +5,24 @@ from discord.ext import commands
 from discord import Intents
 from dotenv import load_dotenv
 
+# Core
+from core.event_manager import EventManager
+from core.event_types import EventType
+
+# Models
+from models.app_state import AppState
+
+# Services
 from services.bot_service import DiscordBotService
+
+# Cogs
 from cogs.chatbridge import ChatBridge
-from cli.cli_manager import CLIManager 
+
+# Controllers
+from controllers.command_controller import CommandController
+
+# Views
+from views.cli_view import CLIView
 
 async def main():
     load_dotenv()
@@ -15,49 +30,64 @@ async def main():
     if not TOKEN:
         raise RuntimeError("DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.")
 
+    # 1. Initialize Core Components
+    app_state = AppState()
+    event_manager = EventManager()
+
+    # 2. Setup Discord Bot
     intents = Intents.default()
     intents.message_content = True
-    intents.members = True         
-
+    intents.members = True
     bot = commands.Bot(command_prefix="!", intents=intents)
-    
-    bot_service = DiscordBotService(bot)
 
-    chat_bridge_cog = ChatBridge(bot, bot_service) 
+    # 3. Initialize Services, Controllers, and Views with Dependency Injection
+    bot_service = DiscordBotService(bot, app_state, event_manager)
+    command_controller = CommandController(bot_service, app_state, event_manager)
+    cli_view = CLIView(command_controller, app_state, event_manager)
+
+    # 4. Register Event Listeners for the View
+    cli_view.register_event_listeners()
+
+    # 5. Setup Cogs
+    chat_bridge_cog = ChatBridge(bot, event_manager)
     await bot.add_cog(chat_bridge_cog)
 
-    # CLIManager 인스턴스를 생성하고 서비스 객체를 주입합니다.
-    cli_manager = CLIManager(bot_service)
-
+    # 6. Define Bot Lifecycle Events
     @bot.event
     async def on_ready():
-        print(f"\n--- 봇 연결 성공! ---")
-        print(f"로그인 완료: {bot.user.name} (ID: {bot.user.id})")
-        # 봇이 준비되면 CLI 루프를 별도의 비동기 태스크로 시작합니다.
-        asyncio.create_task(cli_manager.run_cli())
+        await event_manager.publish(EventType.SHOW_TEXT, f"\n--- 봇 연결 성공! ---")
+        await event_manager.publish(EventType.SHOW_TEXT, f"로그인 완료: {bot.user.name} (ID: {bot.user.id})")
+        await event_manager.publish(EventType.BOT_READY) # Notify view that the bot is ready
 
     @bot.event
     async def on_connect():
-        print("Discord에 연결 중...")
+        await event_manager.publish(EventType.SHOW_TEXT, "Discord에 연결 중...")
 
     @bot.event
     async def on_disconnect():
-        print("Discord에서 연결 끊김.")
+        await event_manager.publish(EventType.SHOW_TEXT, "Discord에서 연결 끊김.")
 
     @bot.event
     async def on_resumed():
-        print("Discord 연결 재개됨.")
+        await event_manager.publish(EventType.SHOW_TEXT, "Discord 연결 재개됨.")
 
+    # 7. Start Bot and CLI concurrently
     try:
-        await bot.start(TOKEN)
+        # Start the bot in the background
+        bot_task = asyncio.create_task(bot.start(TOKEN))
+        # Start the CLI in the foreground
+        cli_task = asyncio.create_task(cli_view.run_cli())
+
+        await asyncio.gather(bot_task, cli_task)
+
     except KeyboardInterrupt:
-        print("\n사용자에 의해 봇 시작이 중단되었습니다.")
+        await event_manager.publish(EventType.SHOW_TEXT, "\n사용자에 의해 봇 시작이 중단되었습니다.")
     except Exception as e:
-        print(f"\nFATAL ERROR: 봇 시작 중 오류가 발생했습니다: {e}")
+        await event_manager.publish(EventType.ERROR, f"\nFATAL ERROR: 봇 시작 중 오류가 발생했습니다: {e}")
     finally:
-        if not bot.is_closed():
+        if bot and not bot.is_closed():
             await bot.close()
-            print("봇이 성공적으로 종료되었습니다.")
+            await event_manager.publish(EventType.SHOW_TEXT, "봇이 성공적으로 종료되었습니다.")
 
 
 if __name__ == "__main__":
