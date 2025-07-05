@@ -8,10 +8,8 @@ from core.event_manager import EventManager
 from core.event_types import EventType
 
 class ChatBridge(commands.Cog):
-    def __init__(self, bot: commands.Bot, bot_service: DiscordBotService, app_state: AppState, event_manager: EventManager):
+    def __init__(self, bot: commands.Bot, event_manager: EventManager):
         self.bot = bot
-        self.bot_service = bot_service 
-        self.app_state = app_state
         self.event_manager = event_manager
     
     @commands.Cog.listener()
