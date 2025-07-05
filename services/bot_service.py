@@ -103,7 +103,10 @@ class DiscordBotService:
         return False
 
     async def fetch_recent_messages(self, count: int = 20) -> bool:
-        """현재 채널의 최근 메시지를 가져와 CLI 출력 형식으로 반환합니다."""
+        """
+        현재 채널의 최근 메시지를 가져와 CLI 출력 형식으로 변환해 recent_messages에 업데이트 합니다.
+        성공 여부를 반환합니다. 
+        """
         if not self.app_state.current_channel:
             self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
             return False
