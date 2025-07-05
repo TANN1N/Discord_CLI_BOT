@@ -10,6 +10,11 @@ class EventType(Enum):
     # General Events
     ERROR = auto()
     SHOW_TEXT = auto()
+    CLEAR_DISPLAY = auto()
+    
+    # UI Interaction Events
+    REQUEST_MULTILINE_INPUT = auto()
+    REQUEST_FILE_INPUT = auto()
     
     # Bot Status Events
     BOT_READY = auto()
@@ -25,4 +30,4 @@ class EventType(Enum):
     MESSAGES_UPDATED = auto()
     MESSAGE_SENT_SUCCESS = auto()
     FILE_SENT_SUCCESS = auto()
-    DISCORD_MESSAGE_RECEIVED = auto()
+    NEW_INCOMING_MESSAGE = auto()
