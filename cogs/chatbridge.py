@@ -27,7 +27,7 @@ class ChatBridge(commands.Cog):
         if message.author == self.bot.user: 
             return
         
-        self.event_manager.publish(EventType.DISCORD_MESSAGE_RECEIVED, message) # Discord message received Event pub
+        self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
         
         # 메시지를 가공하는 것은 View가 결정하도록 함
         # 메시지 멘션 처리는 BotService의 유틸리티 메서드를 활용합니다.
