@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable
 from collections import defaultdict
 from .event_types import EventType
@@ -11,8 +12,11 @@ class EventManager:
         """이벤트가 발생했을 때 호출된 콜백 함수를 등록합니다."""
         self._listeners[event_type].append(callback)
     
-    def publish(self, event_type: EventType, *args, **kwargs):
+    async def publish(self, event_type: EventType, *args, **kwargs):
         """특정 유형의 이벤트를 모든 구독자에게 발행합니다."""
         if event_type in self._listeners:
             for callback in self._listeners[event_type]:
-                callback(*args, **kwargs)
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(*args, **kwargs)
+                else:
+                    callback(*args, **kwargs)
