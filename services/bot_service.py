@@ -115,9 +115,7 @@ class DiscordBotService:
         try:
             # 채널 히스토리를 비동기적으로 가져옵니다.
             async for msg in self.app_state.current_channel.history(limit=count):
-                timestamp = (msg.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
-                processed_content = await self._process_message_mentions(msg)
-                cli_messages.append(f"[{timestamp}] {processed_content}")
+                cli_messages.append(await self.format_message_for_cli(msg))
         except discord.errors.Forbidden:
             self.event_manager.publish(EventType.ERROR, "[오류] 채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
         except Exception as e:
@@ -163,8 +161,10 @@ class DiscordBotService:
             self.event_manager.publish(EventType.ERROR, f"[오류] 파일 전송 실패: {e}") # Error Event pub
         return False
 
-    async def _process_message_mentions(self, message: discord.Message) -> str:
-        """메시지 내용을 파싱하여 멘션(사용자, 역할, 채널)을 이름으로 변환합니다."""
+    async def format_message_for_cli(self, message: discord.Message) -> str:
+        """Discord 메시지 객체를 CLI에 표시할 단일 문자열로 포맷팅합니다."""
+        timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
+        
         content = message.content
         for member in message.mentions:
             display_name = member.display_name
@@ -175,15 +175,19 @@ class DiscordBotService:
         for channel in message.channel_mentions:
             content = content.replace(f"<#{channel.id}>", f"#{channel.name}")
         
+        author_display = message.author.display_name
+        
         file_attachments = []
         if message.attachments:
             for attachment in message.attachments:
                 file_attachments.append(f"📁 {attachment.filename}")
         
         if file_attachments:
-            return f"{message.author.display_name}: {content}\n[첨부 파일: {', '.join(file_attachments)}]"
+            processed_content = f"{author_display}: {content}\n[첨부 파일: {', '.join(file_attachments)}]"
         else:
-            return f"{message.author.display_name}: {content}"
+            processed_content = f"{author_display}: {content}"
+            
+        return f"[{timestamp}] {processed_content}"
     
     # 해당 함수들은 MVC, Pub-Sub 아키텍쳐로 전환하면서 더이상 사용하지 않기를 권고합니다.
     # @property
