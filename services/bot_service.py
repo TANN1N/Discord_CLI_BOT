@@ -20,11 +20,11 @@ class DiscordBotService:
     async def get_all_guilds_info(self) -> bool:
         """봇이 참여 중인 모든 길드의 정보 (인덱스, 이름, ID)를 반환합니다."""
         if not self.bot.is_ready():
-            self.event_manager.publish(EventType.ERROR, "[오류] 봇이 Discord에 연결될 때까지 기다려 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 봇이 Discord에 연결될 때까지 기다려 주세요.") # Error Event pub
             return False
         # Discord Bot 객체의 guilds 속성에서 직접 정보를 가져옵니다.
         self.app_state.all_guilds = list(self.bot.guilds)
-        self.event_manager.publish(EventType.GUILDS_UPDATED) # Guilds updated Event pub
+        await self.event_manager.publish(EventType.GUILDS_UPDATED) # Guilds updated Event pub
         return True
 
     async def select_guild(self, value: str) -> bool:
@@ -60,14 +60,14 @@ class DiscordBotService:
             self.app_state.current_channel = None # 길드 변경 시 채널 초기화
             # 현재 길드의 텍스트 채널 목록을 캐싱합니다.
             self.app_state.available_channels = [ch for ch in guild_found.channels if isinstance(ch, discord.TextChannel)]
-            self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name) # Guild selected Event pub
+            await self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name) # Guild selected Event pub
             return True
         return False
 
     async def select_channel(self, value: str) -> bool:
         """주어진 인덱스, ID 또는 이름으로 현재 채널을 설정합니다."""
         if not self.app_state.current_guild:
-            self.event_manager.publish(EventType.ERROR, "[오류] 채널을 설정하려면 먼저 서버를 선택해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널을 설정하려면 먼저 서버를 선택해 주세요.") # Error Event pub
             return False
 
         channel_found = None
@@ -98,7 +98,7 @@ class DiscordBotService:
         
         if channel_found and isinstance(channel_found, discord.TextChannel):
             self.app_state.current_channel = channel_found
-            self.event_manager.publish(EventType.CHANNEL_SELECTED, channel_found.name) # Channel selected Event pub
+            await self.event_manager.publish(EventType.CHANNEL_SELECTED, channel_found.name) # Channel selected Event pub
             return True
         return False
 
@@ -108,7 +108,7 @@ class DiscordBotService:
         성공 여부를 반환합니다. 
         """
         if not self.app_state.current_channel:
-            self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
             return False
         
         cli_messages = []
@@ -117,48 +117,48 @@ class DiscordBotService:
             async for msg in self.app_state.current_channel.history(limit=count):
                 cli_messages.append(await self.format_message_for_cli(msg))
         except discord.errors.Forbidden:
-            self.event_manager.publish(EventType.ERROR, "[오류] 채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
         except Exception as e:
-            self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 가져오기 실패: {e}") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 가져오기 실패: {e}") # Error Event pub
         
         self.app_state.recent_messages = list(reversed(cli_messages))
-        self.event_manager.publish(EventType.MESSAGES_UPDATED) # Messages updated Event pub
+        await self.event_manager.publish(EventType.MESSAGES_UPDATED) # Messages updated Event pub
         return True
 
     async def send_message(self, content: str) -> bool:
         """현재 채널에 메시지를 전송하고 성공 여부를 반환합니다."""
         if not self.app_state.current_channel:
-            self.event_manager.publish(EventType.ERROR, "[오류] 메시지를 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 메시지를 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
             return False
         
         try:
             message = await self.app_state.current_channel.send(content)
-            self.event_manager.publish(EventType.MESSAGE_SENT_SUCCESS, message) # Message sent success Event pub
+            await self.event_manager.publish(EventType.MESSAGE_SENT_SUCCESS, message) # Message sent success Event pub
             return True
         except discord.errors.Forbidden:
-            self.event_manager.publish(EventType.ERROR, "[오류] 채널에 메시지를 보낼 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널에 메시지를 보낼 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
         except Exception as e:
-            self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 전송 실패: {e}") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 전송 실패: {e}") # Error Event pub
         return False
 
     async def send_file(self, file_path: str, content: str | None = None) -> bool:
         """지정된 파일을 현재 채널에 전송하고 성공 여부를 반환합니다."""
         if not self.app_state.current_channel:
-            self.event_manager.publish(EventType.ERROR, "[오류] 파일을 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 파일을 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
             return False
         
         if not os.path.exists(file_path):
-            self.event_manager.publish(EventType.ERROR, f"[오류] 파일을 찾을 수 없습니다: '{file_path}'") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일을 찾을 수 없습니다: '{file_path}'") # Error Event pub
             return False
             
         try:
             discord_file = discord.File(file_path)
             message = await self.app_state.current_channel.send(content=content, file=discord_file)
-            self.event_manager.publish(EventType.FILE_SENT_SUCCESS, message) # File sent success Event pub
+            await self.event_manager.publish(EventType.FILE_SENT_SUCCESS, message) # File sent success Event pub
         except discord.errors.Forbidden:
-            self.event_manager.publish(EventType.ERROR, "[오류] 채널에 파일을 첨부할 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널에 파일을 첨부할 권한이 없습니다. 봇 역할 권한을 확인해 주세요.") # Error Event pub
         except Exception as e:
-            self.event_manager.publish(EventType.ERROR, f"[오류] 파일 전송 실패: {e}") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 전송 실패: {e}") # Error Event pub
         return False
 
     async def format_message_for_cli(self, message: discord.Message) -> str:

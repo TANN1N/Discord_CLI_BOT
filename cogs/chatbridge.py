@@ -15,7 +15,7 @@ class ChatBridge(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """봇이 Discord에 연결될 때 호출됩니다."""
-        self.event_manager.publish(EventType.BOT_READY, self.bot.user) # Bot ready Event pub
+        await self.event_manager.publish(EventType.BOT_READY, self.bot.user) # Bot ready Event pub
         # 이 시점에서 bot_service가 Discord Bot 객체를 통해 데이터에 접근할 준비가 됩니다.
     
     @commands.Cog.listener()
@@ -25,7 +25,7 @@ class ChatBridge(commands.Cog):
         if message.author == self.bot.user: 
             return
         
-        self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
+        await self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
         
         # 메시지를 가공하는 것은 View가 결정하도록 함
         # 메시지 멘션 처리는 BotService의 유틸리티 메서드를 활용합니다.

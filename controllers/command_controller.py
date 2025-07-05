@@ -50,7 +50,7 @@ class CommandController:
         else:
             error_message = f"[오류] 알 수 없는 명령어입니다: {command}\n"
             error_message += "명령어 도움말을 보려면 '/help'를 입력해 주세요.\n"
-            self.event_manager.publish(EventType.ERROR, error_message) # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, error_message) # Error Event pub
             return False
 
     async def _help(self, arg: str) -> bool:
@@ -62,7 +62,7 @@ class CommandController:
                 doc = func.__doc__.strip() if func.__doc__ else "설명 없음."
                 help_text += f"{cmd_key:<15} - {doc}\n"
         help_text += ("--------------------------\n")
-        self.event_manager.publish(EventType.SHOW_TEXT, help_text) # Show text Event pub
+        await self.event_manager.publish(EventType.SHOW_TEXT, help_text) # Show text Event pub
         return False
 
     async def _list_guilds(self, arg: str) -> bool:
@@ -73,11 +73,11 @@ class CommandController:
     async def _set_guild(self, arg: str) -> bool:
         """서버 인덱스, ID 또는 이름을 사용하여 현재 서버의 설정을 요청합니다."""
         if not arg:
-            self.event_manager.publish(EventType.ERROR, "[오류] 서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1") # Error Event pub
             return False
         
         if not await self.bot_service.select_guild(arg):
-            self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 서버 인덱스, ID 또는 이름입니다.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 서버 인덱스, ID 또는 이름입니다.") # Error Event pub
         return False
 
     async def _list_channels(self, arg: str) -> bool:
@@ -91,20 +91,20 @@ class CommandController:
         #         self.event_manager.publish(EventType.SHOW_TEXT, f"  [{idx}] #{channel.name} (ID: {channel.id}){current_indicator}")
         #     self.event_manager.publish(EventType.SHOW_TEXT, "-------------------------------------------\n")
         if self.app_state.current_guild:
-            self.event_manager.publish(EventType.GUILD_SELECTED, self.app_state.current_guild.name)
+            await self.event_manager.publish(EventType.GUILD_SELECTED, self.app_state.current_guild.name)
         else:
-            self.event_manager.publish(EventType.ERROR, "[오류] 채널 목록을 보려면 먼저 서버를 선택해 주세요. '/setguild' 사용.")
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 목록을 보려면 먼저 서버를 선택해 주세요. '/setguild' 사용.")
         return False
 
     async def _set_channel(self, arg: str) -> bool:
         """채널 인덱스, ID 또는 이름을 사용하여 현재 채널을 설정합니다."""
         if not arg:
-            self.event_manager.publish(EventType.ERROR, "[오류] 채널 인덱스, ID 또는 이름을 입력해 주세요. 예: /setchannel 1\n /setchannel 123456789012345678\n /setchannel 일반")
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 인덱스, ID 또는 이름을 입력해 주세요. 예: /setchannel 1\n /setchannel 123456789012345678\n /setchannel 일반")
 
         if await self.bot_service.select_channel(arg):
             await self.bot_service.fetch_recent_messages()
         else:
-            self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
+            await self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
         return False
 
     async def _read(self, arg: str) -> bool:
@@ -114,10 +114,10 @@ class CommandController:
             try:
                 count = int(arg)
                 if not (1 <= count <= 100):
-                    self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 1에서 100 사이여야 합니다.")
+                    await self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 1에서 100 사이여야 합니다.")
                     return False
             except ValueError:
-                self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 숫자여야 합니다.")
+                await self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 숫자여야 합니다.")
                 return False
         await self.bot_service.fetch_recent_messages(count)
         
@@ -137,7 +137,7 @@ class CommandController:
         # 터미널 화면의 관리는 View에게 맡기도록 함
         # os.system('cls' if os.name == 'nt' else 'clear')
         # self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 화면이 지워졌습니다.")
-        self.event_manager.publish(EventType.CLEAR_DISPLAY)
+        await self.event_manager.publish(EventType.CLEAR_DISPLAY)
         return False
 
     async def _multiline_input(self, arg: str) -> bool:
@@ -163,7 +163,7 @@ class CommandController:
         async def on_complete(text: str):
             if text.strip():
                 await self.bot_service.send_message(text)
-        self.event_manager.publish(EventType.REQUEST_MULTILINE_INPUT, on_complete)
+        await self.event_manager.publish(EventType.REQUEST_MULTILINE_INPUT, on_complete)
         return False
 
     async def _attach_file(self, arg: str) -> bool:
@@ -190,11 +190,11 @@ class CommandController:
         
         async def on_complete(file_path: str, caption: str | None):
             await self.bot_service.send_file(file_path, caption)
-        self.event_manager.publish(EventType.REQUEST_FILE_INPUT, on_complete, arg)
+        await self.event_manager.publish(EventType.REQUEST_FILE_INPUT, on_complete, arg)
         return False
 
     async def _quit(self, arg: str) -> bool:
         """봇을 종료합니다."""
-        self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 봇을 종료합니다...")
+        await self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 봇을 종료합니다...")
         await self.bot_service.bot.close()
         return True
