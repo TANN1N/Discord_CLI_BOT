@@ -7,7 +7,7 @@ from models.app_state import AppState
 from core.event_manager import EventManager
 from core.event_types import EventType
 
-class CLIHandler:
+class CommandController:
     """
     커맨드 라인 인터페이스(CLI)에서의 유저 입력을 핸들링합니다. 
     MVC 패턴에서 Controller에 해당합니다. 
