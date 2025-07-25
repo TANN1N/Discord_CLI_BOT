@@ -22,6 +22,7 @@ htmlcov/
 
 # Ignore test directory directly under the repo
 /test/
+/logs/
 
 /discord_cli_bot/
 
