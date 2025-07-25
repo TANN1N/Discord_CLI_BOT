@@ -12,17 +12,18 @@ from core.event_types import EventType
 # Models
 from models.app_state import AppState
 
+# Controllers
+from controllers.command_controller import CommandController
+
+# Views
+from views.cli_view import CLIView
+
 # Services
 from services.bot_service import DiscordBotService
 
 # Cogs
 from cogs.chatbridge import ChatBridge
 
-# Controllers
-from controllers.command_controller import CommandController
-
-# Views
-from views.cli_view import CLIView
 
 async def main():
     load_dotenv()
