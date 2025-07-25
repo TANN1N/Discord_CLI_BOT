@@ -9,6 +9,7 @@ from models.app_state import AppState
 from core.event_manager import EventManager
 from core.event_types import EventType
 from controllers.command_controller import CommandController
+from repos.discord_cli_bot.models import app_state
 
 class CLIView:
     """
@@ -150,10 +151,14 @@ class CLIView:
         print("----------------------------------------\n")
 
     async def handle_new_incoming_message(self, message):
-        # 현재 보고 있는 채널의 메시지만 출력
+        # 현재 채널의 메시지인 경우, 일반적인 포맷으로 출력
         if self.app_state.current_channel and message.channel.id == self.app_state.current_channel.id:
             formatted_message = await self.controller.bot_service.format_message_for_cli(message)
             print(f"\n{formatted_message}")
+        # 다른 채널의 메시지인 경우, 어디서 온 메시지인지 표시하여 알려줌
+        else:
+            notification = f"\n[새 메시지 @{message.guild.name}/#{message.channel.name}]\n"
+            print(notification)
 
     async def handle_request_multiline_input(self, on_complete: Callable):
         print("\n--- 여러 줄 메시지 입력 모드 ---")
@@ -178,7 +183,7 @@ class CLIView:
         # 인자 분석
         if initial_arg:
             parts = initial_arg.split(' ', 1)
-            file_path = parts[0].strip('\'"')
+            file_path = parts[0].strip('\'""')
             if len(parts) > 1:
                 caption = parts[1]
         
@@ -187,7 +192,7 @@ class CLIView:
             if file_path: # 경로가 있었는데 못찾은 경우
                 print(f"[오류] 파일을 찾을 수 없습니다: {file_path}")
             file_path_input = await self.session.prompt_async("첨부할 파일의 전체 경로를 입력하세요: ")
-            file_path = file_path_input.strip('\'"')
+            file_path = file_path_input.strip('\'""')
 
         # 캡션이 없으면 입력받기 (선택 사항)
         if not caption:
