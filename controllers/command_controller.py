@@ -82,16 +82,8 @@ class CommandController:
 
     async def _list_channels(self, arg: str) -> bool:
         """현재 선택된 서버의 채널 목록을 표시합니다."""
-        # channels = self.app_state.available_channels
-        # if channels:
-        #     self.event_manager.publish(EventType.SHOW_TEXT, f"\n--- 채널 목록 (서버: {self.app_state.current_guild.name}) ---")
-        #     for idx, channel in enumerate(channels):
-        #         # 현재 선택된 채널을 표시합니다.
-        #         current_indicator = " (현재 선택됨)" if self.app_state.current_channel and self.app_state.current_channel.id == channel.id else ""
-        #         self.event_manager.publish(EventType.SHOW_TEXT, f"  [{idx}] #{channel.name} (ID: {channel.id}){current_indicator}")
-        #     self.event_manager.publish(EventType.SHOW_TEXT, "-------------------------------------------\n")
         if self.app_state.current_guild:
-            await self.event_manager.publish(EventType.GUILD_SELECTED, self.app_state.current_guild.name)
+            await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED)
         else:
             await self.event_manager.publish(EventType.ERROR, "[오류] 채널 목록을 보려면 먼저 서버를 선택해 주세요. '/setguild' 사용.")
         return False

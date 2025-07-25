@@ -32,6 +32,7 @@ class CLIView:
         self.event_manager.subscribe(EventType.BOT_READY, self.handle_bot_ready)
         self.event_manager.subscribe(EventType.GUILDS_UPDATED, self.handle_guilds_updated)
         self.event_manager.subscribe(EventType.GUILD_SELECTED, self.handle_guild_selected)
+        self.event_manager.subscribe(EventType.AVAILABLE_CHANNELS_UPDATED, self.handle_available_channels_updated)
         self.event_manager.subscribe(EventType.CHANNEL_SELECTED, self.handle_channel_selected)
         self.event_manager.subscribe(EventType.MESSAGES_UPDATED, self.handle_messages_updated)
         self.event_manager.subscribe(EventType.NEW_INCOMING_MESSAGE, self.handle_new_incoming_message)
@@ -121,7 +122,19 @@ class CLIView:
         print("------------------\n")
 
     async def handle_guild_selected(self, guild_name: str):
-        print(f"\n[성공] 서버가 설정되었습니다: {guild_name}\n")
+        print(f"\n[성공] 서버가 설정되었습니다: {guild_name}")
+
+    async def handle_available_channels_updated(self, *args):
+        """사용 가능한 채널 목록을 출력합니다."""
+        print(f"\n--- 채널 목록 (서버: {self.app_state.current_guild.name}) ---")
+        channels = self.app_state.available_channels
+        if not channels:
+            print("  사용 가능한 텍스트 채널이 없습니다.")
+        else:
+            for idx, channel in enumerate(channels):
+                current_indicator = " (현재 선택됨)" if self.app_state.current_channel and self.app_state.current_channel.id == channel.id else ""
+                print(f"  [{idx + 1}] #{channel.name} (ID: {channel.id}){current_indicator}")
+        print("-------------------------------------------\n")
 
     async def handle_channel_selected(self, channel_name: str):
         print(f"\n[성공] 채널이 설정되었습니다: #{channel_name}\n")

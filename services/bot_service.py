@@ -61,6 +61,7 @@ class DiscordBotService:
             # 현재 길드의 텍스트 채널 목록을 캐싱합니다.
             self.app_state.available_channels = [ch for ch in guild_found.channels if isinstance(ch, discord.TextChannel)]
             await self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name) # Guild selected Event pub
+            await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED) # Available channels updated Event pub
             return True
         return False
 

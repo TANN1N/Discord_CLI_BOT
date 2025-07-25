@@ -24,6 +24,7 @@ class EventType(Enum):
     GUILD_SELECTED = auto()
     
     # Channel Events
+    AVAILABLE_CHANNELS_UPDATED = auto()
     CHANNEL_SELECTED = auto()
     
     # Message Events
