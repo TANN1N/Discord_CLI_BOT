@@ -1,11 +1,15 @@
 import os
 import asyncio
+import logging
 from typing import Callable
 
 from services.bot_service import DiscordBotService 
 from models.app_state import AppState
 from core.event_manager import EventManager
 from core.event_types import EventType
+
+logger = logging.getLogger(__name__)
+
 
 class CommandController:
     """
@@ -45,9 +49,11 @@ class CommandController:
         """CLI 명령어를 처리하고, 봇 종료가 필요한 경우 True를 반환합니다."""
         handler = self.commands.get(command)
         if handler:
+            logger.info("Executing command: %s with arg: '%s'", command, arg)
             # 모든 핸들러는 bool 값을 반환하도록 통일했습니다.
             return await handler(arg)
         else:
+            logger.warning("Unknown command received: %s", command)
             error_message = f"[오류] 알 수 없는 명령어입니다: {command}\n"
             error_message += "명령어 도움말을 보려면 '/help'를 입력해 주세요.\n"
             await self.event_manager.publish(EventType.ERROR, error_message) # Error Event pub

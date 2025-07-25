@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 
 from discord.ext import commands
 from discord import Intents
@@ -8,6 +9,7 @@ from dotenv import load_dotenv
 # Core
 from core.event_manager import EventManager
 from core.event_types import EventType
+from core.logger import setup_logging
 
 # Models
 from models.app_state import AppState
@@ -26,9 +28,14 @@ from cogs.chatbridge import ChatBridge
 
 
 async def main():
+    # 0. Initialize Logging
+    setup_logging()
+
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     if not TOKEN:
+        # Log the error before raising it
+        logging.critical("DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.")
         raise RuntimeError("DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.")
 
     # 1. Initialize Core Components
@@ -92,10 +99,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    print("Discord CLI 봇 실행 시작...")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n사용자에 의해 봇이 완전히 종료되었습니다.")
     except Exception as e:
         print(f"\n처리되지 않은 치명적인 예외가 발생했습니다: {e}")
+        # 현 시점에서 로거가 동작하지 않을 확률이 높지만 일단 시도는 해봄.
+        logging.critical("처리되지 않은 치명적인 예외 발생", exc_info=True)
