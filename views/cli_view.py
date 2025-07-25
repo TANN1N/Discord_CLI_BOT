@@ -9,7 +9,7 @@ from models.app_state import AppState
 from core.event_manager import EventManager
 from core.event_types import EventType
 from controllers.command_controller import CommandController
-from repos.discord_cli_bot.models import app_state
+from models import app_state
 
 class CLIView:
     """
