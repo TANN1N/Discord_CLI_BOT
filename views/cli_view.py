@@ -54,7 +54,9 @@ class CLIView:
         with patch_stdout():
             while self.is_running:
                 try:
-                    prompt_text = f"[{self.app_state.current_guild.name} | #{self.app_state.current_channel.name}]> "
+                    guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
+                    channel_name = f"#{self.app_state.current_channel.name}" if self.app_state.current_channel else "No Channel"
+                    prompt_text = f"[{guild_name} | {channel_name}]> "
                     user_input = await self.session.prompt_async(prompt_text)
 
                     if not user_input.strip():
@@ -87,7 +89,6 @@ class CLIView:
             print("[실패] 다시 시도해 주세요.")
 
         print("\n--- 초기 설정: 채널 선택 ---")
-        await self.controller._list_channels("")
 
         while True:
             channel_input = await self.session.prompt_async("채널 인덱스, ID 또는 이름을 입력하세요: ")
