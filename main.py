@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 async def main():
     # 0. Initialize Logging
+    load_dotenv()
     setup_logging()
     logger.info("Application starting...")
 
-    load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     if not TOKEN:
         # Log the error before raising it
