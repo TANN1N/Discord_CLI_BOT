@@ -2,6 +2,7 @@ import os
 import asyncio
 import logging
 import aiohttp
+import aiofiles
 
 import discord
 from discord.ext import commands
@@ -13,6 +14,7 @@ from core.event_types import EventType
 
 logger = logging.getLogger(__name__)
 
+DOWNLOADS_DIR = "downloads"
 
 class DiscordBotService:
     def __init__(self, bot: commands.Bot, app_state: AppState, event_manager: EventManager):
@@ -20,6 +22,8 @@ class DiscordBotService:
         self.app_state = app_state
         self.event_manager = event_manager
         self._cached_channels: list[discord.TextChannel] = []
+        self.event_manager.subscribe(EventType.FILES_LIST_REQUESTED, self.fetch_recent_files)
+        self.event_manager.subscribe(EventType.FILE_DOWNLOAD_REQUESTED, self.download_file_by_index)
 
     async def get_all_guilds_info(self) -> bool:
         """봇이 참여 중인 모든 길드의 정보 (인덱스, 이름, ID)를 반환합니다."""
@@ -62,6 +66,7 @@ class DiscordBotService:
         if guild_found:
             self.app_state.current_guild = guild_found
             self.app_state.current_channel = None # 길드 변경 시 채널 초기화
+            self.app_state.file_cache.clear() # 길드 변경 시 파일 캐시 초기화
             # 현재 길드의 텍스트 채널 목록을 캐싱합니다.
             self.app_state.available_channels = [ch for ch in guild_found.channels if isinstance(ch, discord.TextChannel)]
             await self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name) # Guild selected Event pub
@@ -103,6 +108,7 @@ class DiscordBotService:
         
         if channel_found and isinstance(channel_found, discord.TextChannel):
             self.app_state.current_channel = channel_found
+            self.app_state.file_cache.clear() # 채널 변경 시 파일 캐시 초기화
             await self.event_manager.publish(EventType.CHANNEL_SELECTED, channel_found.name) # Channel selected Event pub
             return True
         return False
@@ -137,6 +143,65 @@ class DiscordBotService:
         self.app_state.recent_messages = list(reversed(cli_messages))
         await self.event_manager.publish(EventType.MESSAGES_UPDATED) # Messages updated Event pub
         return True
+
+    async def fetch_recent_files(self, limit: int = 50) -> bool:
+        """
+        현재 채널의 최근 파일들을 가져와 file_cache에 캐싱하고 성공 여부를 반환합니다.
+        """
+        if not self.app_state.current_channel:
+            logger.warning("[오류] 먼저 채널을 선택해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
+            return False
+        
+        files = []
+        try:
+            async for msg in self.app_state.current_channel.history(limit=limit):
+                if msg.attachments:
+                    files.extend(msg.attachments)
+            
+            self.app_state.file_cache = files # 최신 파일이 위로 오도록
+            await self.event_manager.publish(EventType.FILES_LIST_UPDATED)
+            return True
+
+        except discord.errors.Forbidden:
+            logger.warning("Forbidden to read history in channel %s", self.app_state.current_channel.name)
+            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 히스토리 읽기 권한이 없습니다.")
+        except Exception as e:
+            logger.exception("Error fetching files from channel %s", self.app_state.current_channel.name)
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 목록 가져오기 실패: {e}")
+        
+        return False
+
+    async def download_file_by_index(self, index: int):
+        """인덱스를 사용하여 file_cache에서 파일을 다운로드합니다."""
+        try:
+            attachment = self.app_state.file_cache[index - 1]
+            
+            if not os.path.exists(DOWNLOADS_DIR):
+                os.makedirs(DOWNLOADS_DIR)
+            
+            file_path = os.path.join(DOWNLOADS_DIR, attachment.filename)
+            
+            logger.info(f"[정보] '{attachment.filename}' 다운로드 시작...")
+            await self.event_manager.publish(EventType.SHOW_TEXT, f"[정보] '{attachment.filename}' 다운로드 시작...")
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(attachment.url) as resp:
+                    if resp.status == 200:
+                        async with aiofiles.open(file_path, mode='wb') as f:
+                            await f.write(await resp.read())
+                        logger.info("File downloaded successfully to %s", file_path)
+                        await self.event_manager.publish(EventType.FILE_DOWNLOAD_COMPLETE, file_path)
+                    else:
+                        logger.error("Error downloading file %s: status %d", attachment.filename, resp.status)
+                        await self.event_manager.publish(EventType.ERROR, f"[오류] '{attachment.filename}' 다운로드 실패 (HTTP 상태: {resp.status})")
+
+        except IndexError:
+            logger.exception("[오류] 잘못된 파일 인덱스입니다.")
+            await self.event_manager.publish(EventType.ERROR, "[오류] 잘못된 파일 인덱스입니다.")
+        except Exception as e:
+            logger.exception("Error during file download for index %d", index)
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 다운로드 중 예외 발생: {e}")
 
     async def send_message(self, content: str) -> bool:
         """현재 채널에 메시지를 전송하고 성공 여부를 반환합니다."""

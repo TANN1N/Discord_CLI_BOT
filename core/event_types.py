@@ -31,4 +31,11 @@ class EventType(Enum):
     MESSAGES_UPDATED = auto()
     MESSAGE_SENT_SUCCESS = auto()
     FILE_SENT_SUCCESS = auto()
+    
+    # File Download Events
+    FILES_LIST_REQUESTED = auto()
+    FILES_LIST_UPDATED = auto()
+    FILE_DOWNLOAD_REQUESTED = auto()
+    FILE_DOWNLOAD_COMPLETE = auto()
+    
     NEW_INCOMING_MESSAGE = auto()

@@ -40,6 +40,10 @@ class CommandController:
             '/ml': self._multiline_input,
             '/attach': self._attach_file,
             '/a': self._attach_file,
+            '/files': self._list_files,
+            '/f': self._list_files,
+            '/download': self._download_file,
+            '/d': self._download_file,
             '/clear': self._clear,
             '/cls': self._clear,
             '/quit': self._quit,
@@ -118,46 +122,15 @@ class CommandController:
                 await self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 숫자여야 합니다.")
                 return False
         await self.bot_service.fetch_recent_messages(count)
-        
-        # fetch_recent_messages에서 이벤트를 발행하므로 View에서 어떻게 처리할지 결정하도록 위임함
-        # if messages:
-        #     self.event_manager.publish(EventType.SHOW_TEXT, f"\n[최근 {count}개 메시지] (채널: #{self.app_state.current_channel.name})")
-        #     for msg_line in messages:
-        #         self.event_manager.publish(EventType.SHOW_TEXT, msg_line)
-        # elif self.app_state.current_channel: 
-        #     self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 불러올 메시지가 없거나 오류가 발생했습니다. 권한을 확인해 주세요.")
-        # else: 
-        #     self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요. '/setchannel' 사용.")
         return False
 
     async def _clear(self, arg: str) -> bool:
         """터미널 화면을 지웁니다."""
-        # 터미널 화면의 관리는 View에게 맡기도록 함
-        # os.system('cls' if os.name == 'nt' else 'clear')
-        # self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 화면이 지워졌습니다.")
         await self.event_manager.publish(EventType.CLEAR_DISPLAY)
         return False
 
     async def _multiline_input(self, arg: str) -> bool:
         """여러 줄 메시지 입력 모드로 전환합니다. 입력을 마치려면 새로운 줄에 @END를 입력하세요."""
-        # self.event_manager.publish(EventType.SHOW_TEXT, "\n--- 여러 줄 메시지 입력 모드 ---")
-        # self.event_manager.publish(EventType.SHOW_TEXT, "  입력을 마치려면 새로운 줄에 '@END'를 입력하고 Enter를 누르세요.")
-        # self.event_manager.publish(EventType.SHOW_TEXT, "----------------------------")
-        # lines = []
-        # while True:
-        #     # asyncio.to_thread를 사용하여 blocking input을 비동기적으로 처리합니다.
-        #     line = await asyncio.to_thread(input, ">> ")
-        #     if line.strip().upper() == "@END": 
-        #         break
-        #     lines.append(line)
-        
-        # full_message = "\n".join(lines)
-        # if full_message.strip(): 
-        #     await self.bot_service.send_message(full_message)
-        # else:
-        #     print("[정보] 입력된 내용이 없어 메시지를 전송하지 않았습니다.")
-        # print("\n--- 여러 줄 메시지 입력 모드 종료 ---\n")
-
         async def on_complete(text: str):
             if text.strip():
                 await self.bot_service.send_message(text)
@@ -166,29 +139,53 @@ class CommandController:
 
     async def _attach_file(self, arg: str) -> bool:
         """지정된 파일을 현재 채널에 첨부합니다. (예: /a C:/path/file.png '캡션')"""
-        # multiline input과 마찬가지로 View에게 구현을 위임함.
-        # if not arg:
-        #     print("[오류] 첨부할 파일 경로를 입력하세요. 사용법: /attach <파일경로> [선택적 메시지]")
-        #     return False
-
-        # 첫 번째 공백을 기준으로 파일 경로와 메시지를 분리합니다.
-        # parts = arg.split(' ', 1)
-        # file_path = parts[0]
-        # message_content = parts[1] if len(parts) > 1 else None
-
-        # # 파일 경로에 따옴표가 있을 경우 제거합니다.
-        # file_path = file_path.strip('\'"')
-
-        # if not os.path.exists(file_path):
-        #     print(f"[오류] 지정된 파일 경로를 찾을 수 없습니다: '{file_path}'")
-        #     return False
-
-        # await self.bot_service.send_file(file_path, message_content)
-        # print(f"[정보] 파일 전송 시도: '{file_path}'")
-        
         async def on_complete(file_path: str, caption: str | None):
             await self.bot_service.send_file(file_path, caption)
         await self.event_manager.publish(EventType.REQUEST_FILE_INPUT, on_complete, arg)
+        return False
+
+    async def _list_files(self, arg: str) -> bool:
+        """현재 채널의 최근 파일 목록을 표시합니다. (기본 50개 메시지 스캔)"""
+        if not self.app_state.current_channel:
+            await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요. '/setchannel' 사용.")
+            return False
+        
+        limit = 50
+        if arg:
+            try:
+                limit = int(arg)
+                if not (1 <= limit <= 200):
+                    await self.event_manager.publish(EventType.ERROR, "[오류] 스캔할 메시지 개수는 1에서 200 사이여야 합니다.")
+                    return False
+            except ValueError:
+                await self.event_manager.publish(EventType.ERROR, "[오류] 스캔할 메시지 개수는 숫자여야 합니다.")
+                return False
+        
+        await self.event_manager.publish(EventType.SHOW_TEXT, f"[정보] 최근 {limit}개 메시지에서 파일을 검색합니다...")
+        await self.event_manager.publish(EventType.FILES_LIST_REQUESTED, limit)
+        return False
+
+    async def _download_file(self, arg: str) -> bool:
+        """인덱스를 사용하여 캐시된 파일 목록에서 파일을 다운로드합니다."""
+        if not arg:
+            await self.event_manager.publish(EventType.ERROR, "[오류] 다운로드할 파일의 인덱스를 입력해 주세요. 예: /download 1")
+            return False
+        
+        try:
+            index = int(arg)
+        except ValueError:
+            await self.event_manager.publish(EventType.ERROR, "[오류] 파일 인덱스는 숫자여야 합니다.")
+            return False
+        
+        if not self.app_state.file_cache:
+            await self.event_manager.publish(EventType.ERROR, "[오류] 파일 목록이 비어있습니다. 먼저 '/files'를 실행해 주세요.")
+            return False
+            
+        if not (1 <= index <= len(self.app_state.file_cache)):
+            await self.event_manager.publish(EventType.ERROR, f"[오류] 유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
+            return False
+
+        await self.event_manager.publish(EventType.FILE_DOWNLOAD_REQUESTED, index)
         return False
 
     async def _quit(self, arg: str) -> bool:

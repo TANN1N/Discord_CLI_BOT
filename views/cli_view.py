@@ -39,6 +39,8 @@ class CLIView:
         self.event_manager.subscribe(EventType.NEW_INCOMING_MESSAGE, self.handle_new_incoming_message)
         self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_request_multiline_input)
         self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_request_file_input)
+        self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
+        self.event_manager.subscribe(EventType.FILE_DOWNLOAD_COMPLETE, self.handle_file_download_complete)
 
     async def run_cli(self):
         """메인 CLI 루프를 실행합니다."""
@@ -202,3 +204,26 @@ class CLIView:
         
         print(f"[정보] 파일 전송 시도: '{file_path}'")
         await on_complete(file_path, caption)
+
+    async def handle_files_list_updated(self, *args):
+        """캐시된 파일 목록을 화면에 표시합니다."""
+        print(f"\n--- 최근 파일 목록 (채널: #{self.app_state.current_channel.name}) ---")
+        if not self.app_state.file_cache:
+            print("  최근 메시지에서 찾은 파일이 없습니다.")
+        else:
+            for idx, attachment in enumerate(self.app_state.file_cache):
+                # 파일 크기를 KB 또는 MB로 변환
+                size_kb = attachment.size / 1024
+                if size_kb > 1024:
+                    size_str = f"{size_kb / 1024:.2f} MB"
+                else:
+                    size_str = f"{size_kb:.2f} KB"
+                
+                print(f"  [{idx + 1}] {attachment.filename} ({size_str})")
+        print("--------------------------------------------------\n")
+        print("다운로드하려면 '/download <인덱스>'를 입력하세요.")
+
+    async def handle_file_download_complete(self, file_path: str):
+        """파일 다운로드 완료 메시지를 표시합니다."""
+        print(f"\n[성공] 파일이 성공적으로 다운로드되었습니다.")
+        print(f"  -> 저장 경로: {os.path.abspath(file_path)}\n")
