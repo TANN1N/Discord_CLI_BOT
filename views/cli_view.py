@@ -84,7 +84,6 @@ class CLIView:
                             self.is_running = False # 종료 명령 시 루프 중단
                     else:
                         # 일반 메시지는 컨트롤러를 거치지 않고 바로 서비스로 전송 요청
-                        logger.debug("User entered message: %s", user_input)
                         await self.controller.bot_service.send_message(user_input)
 
                 except (EOFError, KeyboardInterrupt):
