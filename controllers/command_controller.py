@@ -68,7 +68,7 @@ class CommandController:
         help_text = ("\n--- 사용 가능한 명령어 ---\n")
         
         for cmd_key, func in self.commands.items():
-            if len(cmd_key) > 3: # 단축 명령어는 제외하고 긴 명령어만 도움말에 표시
+            if len(cmd_key) > 4: # 단축 명령어는 제외하고 긴 명령어만 도움말에 표시
                 doc = func.__doc__.strip() if func.__doc__ else "설명 없음."
                 help_text += f"{cmd_key:<15} - {doc}\n"
         help_text += ("--------------------------\n")
