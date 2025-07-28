@@ -26,57 +26,70 @@ from services.bot_service import DiscordBotService
 # Cogs
 from cogs.chatbridge import ChatBridge
 
+logger = logging.getLogger(__name__)
+
 
 async def main():
     # 0. Initialize Logging
     setup_logging()
+    logger.info("Application starting...")
 
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     if not TOKEN:
         # Log the error before raising it
-        logging.critical("DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.")
-        raise RuntimeError("DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.")
+        logger.critical("DISCORD_TOKEN environment variable is not set.")
+        raise RuntimeError("DISCORD_TOKEN environment variable is not set.")
 
     # 1. Initialize Core Components
+    logger.info("Initializing core components...")
     app_state = AppState()
     event_manager = EventManager()
 
     # 2. Setup Discord Bot
+    logger.info("Setting up Discord bot...")
     intents = Intents.default()
     intents.message_content = True
     intents.members = True
     bot = commands.Bot(command_prefix="!", intents=intents)
 
     # 3. Initialize Services, Controllers, and Views with Dependency Injection
+    logger.info("Initializing MVC components...")
     bot_service = DiscordBotService(bot, app_state, event_manager)
     command_controller = CommandController(bot_service, app_state, event_manager)
     cli_view = CLIView(command_controller, app_state, event_manager)
 
     # 4. Register Event Listeners for the View
+    logger.info("Registering view event listeners...")
     cli_view.register_event_listeners()
 
     # 5. Setup Cogs
+    logger.info("Setting up Cogs...")
     chat_bridge_cog = ChatBridge(bot, event_manager)
     await bot.add_cog(chat_bridge_cog)
+    logger.info("Cogs added successfully.")
 
     # 6. Define Bot Lifecycle Events
     @bot.event
     async def on_ready():
+        logger.info("Bot is ready. Logged in as %s (ID: %s)", bot.user.name, bot.user.id)
         await event_manager.publish(EventType.SHOW_TEXT, f"\n--- 봇 연결 성공! ---")
         await event_manager.publish(EventType.SHOW_TEXT, f"로그인 완료: {bot.user.name} (ID: {bot.user.id})")
         await event_manager.publish(EventType.BOT_READY) # Notify view that the bot is ready
 
     @bot.event
     async def on_connect():
+        logger.debug("Connecting to discord...")
         await event_manager.publish(EventType.SHOW_TEXT, "Discord에 연결 중...")
 
     @bot.event
     async def on_disconnect():
+        logger.debug("Connection lost")
         await event_manager.publish(EventType.SHOW_TEXT, "Discord에서 연결 끊김.")
 
     @bot.event
     async def on_resumed():
+        logger.debug("Connection resumed")
         await event_manager.publish(EventType.SHOW_TEXT, "Discord 연결 재개됨.")
 
     # 7. Start Bot and CLI concurrently

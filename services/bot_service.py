@@ -22,17 +22,20 @@ class DiscordBotService:
         self.app_state = app_state
         self.event_manager = event_manager
         self._cached_channels: list[discord.TextChannel] = []
+        logger.debug("Registering file-related event listeners...")
         self.event_manager.subscribe(EventType.FILES_LIST_REQUESTED, self.fetch_recent_files)
         self.event_manager.subscribe(EventType.FILE_DOWNLOAD_REQUESTED, self.download_file_by_index)
+        logger.info("DiscordBotService initialized.")
 
     async def get_all_guilds_info(self) -> bool:
         """봇이 참여 중인 모든 길드의 정보 (인덱스, 이름, ID)를 반환합니다."""
         if not self.bot.is_ready():
             await self.event_manager.publish(EventType.ERROR, "[오류] 봇이 Discord에 연결될 때까지 기다려 주세요.") # Error Event pub
             return False
-        # Discord Bot 객체의 guilds 속성에서 직접 정보를 가져옵니다.
+        
         self.app_state.all_guilds = list(self.bot.guilds)
-        await self.event_manager.publish(EventType.GUILDS_UPDATED) # Guilds updated Event pub
+        logger.info("Found %d guilds.", len(self.app_state.all_guilds))
+        await self.event_manager.publish(EventType.GUILDS_UPDATED)
         return True
 
     async def select_guild(self, value: str) -> bool:
@@ -44,6 +47,7 @@ class DiscordBotService:
             idx = int(value)
             if 1 <= idx <= len(self.bot.guilds):
                 guild_found = self.bot.guilds[idx - 1]
+                logger.debug("Found guild by index: %s", guild_found.name)
         except ValueError:
             pass # 숫자가 아니면 다음 시도
         
@@ -52,6 +56,8 @@ class DiscordBotService:
             try:
                 guild_id = int(value)
                 guild_found = self.bot.get_guild(guild_id)
+                if guild_found:
+                    logger.debug("Found guild by ID: %s", guild_found.name)
             except ValueError:
                 pass # 유효한 ID가 아니면 다음 시도
         
@@ -61,17 +67,23 @@ class DiscordBotService:
             for guild in self.bot.guilds:
                 if guild.name.lower() == lowered_value:
                     guild_found = guild
+                    logger.debug("Found guild by name: %s", guild_found.name)
                     break
         
         if guild_found:
+            logger.info("Successfully selected guild: %s (ID: %s)", guild_found.name, guild_found.id)
             self.app_state.current_guild = guild_found
             self.app_state.current_channel = None # 길드 변경 시 채널 초기화
             self.app_state.file_cache.clear() # 길드 변경 시 파일 캐시 초기화
             # 현재 길드의 텍스트 채널 목록을 캐싱합니다.
             self.app_state.available_channels = [ch for ch in guild_found.channels if isinstance(ch, discord.TextChannel)]
-            await self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name) # Guild selected Event pub
-            await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED) # Available channels updated Event pub
+            logger.info("Cached %d text channels for guild '%s'.", len(self.app_state.available_channels), guild_found.name)
+            
+            await self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name)
+            await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED)
             return True
+        
+        logger.warning("Could not find guild with value: '%s'", value)
         return False
 
     async def select_channel(self, value: str) -> bool:
@@ -86,6 +98,7 @@ class DiscordBotService:
             idx = int(value)
             if 1 <= idx <= len(self.app_state.available_channels):
                 channel_found = self.app_state.available_channels[idx - 1]
+                logger.debug("Found channel by index: #%s", channel_found.name)
         except ValueError:
             pass
         
@@ -93,8 +106,9 @@ class DiscordBotService:
         if not channel_found:
             try:
                 channel_id = int(value)
-                # 현재 길드 내에서 채널을 찾습니다.
-                channel_found = self.app_state.current_guild.get_channel(channel_id) 
+                channel_found = self.app_state.current_guild.get_channel(channel_id)
+                if channel_found:
+                    logger.debug("Found channel by ID: #%s", channel_found.name)
             except ValueError:
                 pass
         
@@ -104,13 +118,17 @@ class DiscordBotService:
             for ch in self.app_state.available_channels:
                 if ch.name.lower() == lowered_value:
                     channel_found = ch
+                    logger.debug("Found channel by name: #%s", ch.name)
                     break
         
         if channel_found and isinstance(channel_found, discord.TextChannel):
+            logger.info("Successfully selected channel: #%s (ID: %s)", channel_found.name, channel_found.id)
             self.app_state.current_channel = channel_found
             self.app_state.file_cache.clear() # 채널 변경 시 파일 캐시 초기화
             await self.event_manager.publish(EventType.CHANNEL_SELECTED, channel_found.name) # Channel selected Event pub
             return True
+            
+        logger.warning("Could not find channel with value: '%s' in guild '%s'", value, self.app_state.current_guild.name)
         return False
 
     async def fetch_recent_messages(self, count: int = 20) -> bool:
@@ -124,9 +142,9 @@ class DiscordBotService:
         
         cli_messages = []
         try:
-            # 채널 히스토리를 비동기적으로 가져옵니다.
             async for msg in self.app_state.current_channel.history(limit=count):
                 cli_messages.append(await self.format_message_for_cli(msg))
+            logger.info("Successfully fetched %d messages.", len(cli_messages))
         except discord.errors.Forbidden:
             logger.warning(
                 "Failed to fetch messages from channel %s due to Forbidden error.",
@@ -141,13 +159,12 @@ class DiscordBotService:
             await self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 가져오기 실패: {e}")
         
         self.app_state.recent_messages = list(reversed(cli_messages))
-        await self.event_manager.publish(EventType.MESSAGES_UPDATED) # Messages updated Event pub
+        await self.event_manager.publish(EventType.MESSAGES_UPDATED)
         return True
 
     async def fetch_recent_files(self, limit: int = 50) -> bool:
-        """
-        현재 채널의 최근 파일들을 가져와 file_cache에 캐싱하고 성공 여부를 반환합니다.
-        """
+        """현재 채널의 최근 파일들을 가져와 file_cache에 캐싱하고 성공 여부를 반환합니다."""
+        logger.info("Fetching recent files from last %d messages in #%s.", limit, self.app_state.current_channel.name if self.app_state.current_channel else "None")
         if not self.app_state.current_channel:
             logger.warning("[오류] 먼저 채널을 선택해 주세요.")
             await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
@@ -164,25 +181,27 @@ class DiscordBotService:
             return True
 
         except discord.errors.Forbidden:
-            logger.warning("Forbidden to read history in channel %s", self.app_state.current_channel.name)
+            logger.warning("Forbidden to read history in channel #%s", self.app_state.current_channel.name)
             await self.event_manager.publish(EventType.ERROR, "[오류] 채널 히스토리 읽기 권한이 없습니다.")
         except Exception as e:
-            logger.exception("Error fetching files from channel %s", self.app_state.current_channel.name)
+            logger.exception("Error fetching files from channel #%s", self.app_state.current_channel.name)
             await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 목록 가져오기 실패: {e}")
         
         return False
 
     async def download_file_by_index(self, index: int):
         """인덱스를 사용하여 file_cache에서 파일을 다운로드합니다."""
+        logger.info("Request to download file at index %d.", index)
         try:
             attachment = self.app_state.file_cache[index - 1]
             
             if not os.path.exists(DOWNLOADS_DIR):
+                logger.info("Downloads directory does not exist. Creating it at '%s'.", DOWNLOADS_DIR)
                 os.makedirs(DOWNLOADS_DIR)
             
             file_path = os.path.join(DOWNLOADS_DIR, attachment.filename)
             
-            logger.info(f"[정보] '{attachment.filename}' 다운로드 시작...")
+            logger.info("Starting download for '%s' from URL: %s", attachment.filename, attachment.url)
             await self.event_manager.publish(EventType.SHOW_TEXT, f"[정보] '{attachment.filename}' 다운로드 시작...")
 
             async with aiohttp.ClientSession() as session:
@@ -190,29 +209,29 @@ class DiscordBotService:
                     if resp.status == 200:
                         async with aiofiles.open(file_path, mode='wb') as f:
                             await f.write(await resp.read())
-                        logger.info("File downloaded successfully to %s", file_path)
+                        logger.info("File downloaded successfully to '%s'", os.path.abspath(file_path))
                         await self.event_manager.publish(EventType.FILE_DOWNLOAD_COMPLETE, file_path)
                     else:
-                        logger.error("Error downloading file %s: status %d", attachment.filename, resp.status)
+                        logger.error("Error downloading file '%s': status %d", attachment.filename, resp.status)
                         await self.event_manager.publish(EventType.ERROR, f"[오류] '{attachment.filename}' 다운로드 실패 (HTTP 상태: {resp.status})")
 
         except IndexError:
-            logger.exception("[오류] 잘못된 파일 인덱스입니다.")
+            logger.error("Invalid file index %d requested. Cache size is %d.", index, len(self.app_state.file_cache))
             await self.event_manager.publish(EventType.ERROR, "[오류] 잘못된 파일 인덱스입니다.")
         except Exception as e:
-            logger.exception("Error during file download for index %d", index)
+            logger.exception("An unexpected error occurred during file download for index %d.", index)
             await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 다운로드 중 예외 발생: {e}")
 
     async def send_message(self, content: str) -> bool:
         """현재 채널에 메시지를 전송하고 성공 여부를 반환합니다."""
         if not self.app_state.current_channel:
+            logger.error("Cannot send message, no channel is selected.")
             await self.event_manager.publish(EventType.ERROR, "[오류] 메시지를 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
             return False
         
         try:
             message = await self.app_state.current_channel.send(content)
-            logger.info("Message sent to #%s: %s", self.app_state.current_channel.name, content)
-            await self.event_manager.publish(EventType.MESSAGE_SENT_SUCCESS, message) # Message sent success Event pub
+            await self.event_manager.publish(EventType.MESSAGE_SENT_SUCCESS, message)
             return True
         except discord.errors.Forbidden:
             logger.warning(
@@ -231,6 +250,7 @@ class DiscordBotService:
     async def send_file(self, file_path: str, content: str | None = None) -> bool:
         """지정된 파일을 현재 채널에 전송하고 성공 여부를 반환합니다."""
         if not self.app_state.current_channel:
+            logger.error("Cannot send file, no channel is selected.")
             await self.event_manager.publish(EventType.ERROR, "[오류] 파일을 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
             return False
         
@@ -240,11 +260,11 @@ class DiscordBotService:
             return False
             
         try:
-            logger.info("Attempting to send file %s to #%s", file_path, self.app_state.current_channel.name)
+            logger.info("Attempting to send file '%s' to #%s", file_path, self.app_state.current_channel.name)
             discord_file = discord.File(file_path)
             message = await self.app_state.current_channel.send(content=content, file=discord_file)
             await self.event_manager.publish(EventType.FILE_SENT_SUCCESS, message) # File sent success Event pub
-            logger.info("Successfully sent file %s", file_path)
+            logger.info("Successfully sent file '%s'", file_path)
         except discord.errors.Forbidden:
             logger.warning(
                 "Failed to send file to channel %s due to Forbidden error.",
@@ -281,27 +301,9 @@ class DiscordBotService:
                 file_attachments.append(f"📁 {attachment.filename}")
         
         if file_attachments:
-            processed_content = f"{author_display}: {content}\n[첨부 파일: {', '.join(file_attachments)}]"
+            separator = "\n" if content else ""
+            processed_content = f"{author_display}: {content}{separator}[Attachment(s): {', '.join(file_attachments)}]"
         else:
             processed_content = f"{author_display}: {content}"
             
         return f"[{timestamp}] {processed_content}"
-    
-    # 해당 함수들은 MVC, Pub-Sub 아키텍쳐로 전환하면서 더이상 사용하지 않기를 권고합니다.
-    # @property
-    # def current_guild(self) -> discord.Guild | None:
-    #     """현재 선택된 Discord 길드 객체를 반환합니다."""
-    #     return self.app_state.current_guild
-
-    # @property
-    # def current_channel(self) -> discord.TextChannel | None:
-    #     """현재 선택된 Discord 텍스트 채널 객체를 반환합니다."""
-    #     return self.app_state.current_channel
-    
-    # async def get_channels_in_current_guild_info(self) -> list[tuple[int, str, int]]:
-    #     """현재 설정된 길드의 텍스트 채널 정보 (인덱스, 이름, ID)를 반환합니다."""
-    #     if not self.app_state.available_channels:
-    #         print("[오류] 채널 목록을 보려면 먼저 서버를 선택해 주세요.")
-    #         return []
-    #     # 캐싱된 채널 목록을 사용합니다.
-    #     return [(idx + 1, ch.name, ch.id) for idx, ch in enumerate(self.app_state.available_channels)]
