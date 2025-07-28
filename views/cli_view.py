@@ -230,6 +230,9 @@ class CLIView:
                 logger.warning("File not found at specified path: %s", file_path)
                 print(f"[오류] 파일을 찾을 수 없습니다: {file_path}")
             file_path_input = await self.session.prompt_async("첨부할 파일의 전체 경로를 입력하세요: ")
+            if file_path_input.strip() == 'quit' or file_path_input.strip() == 'exit':
+                logger.debug("Quiting file input mode.");
+                return
             file_path = file_path_input.strip('\'""')
 
         # 캡션이 없으면 입력받기 (선택 사항)
@@ -248,6 +251,8 @@ class CLIView:
         print(f"\n--- 최근 파일 목록 (채널: #{self.app_state.current_channel.name}) ---")
         if not self.app_state.file_cache:
             print("  최근 메시지에서 찾은 파일이 없습니다.")
+            print("--------------------------------------------------\n")
+            return
         else:
             for idx, attachment in enumerate(self.app_state.file_cache):
                 # 파일 크기를 KB 또는 MB로 변환
