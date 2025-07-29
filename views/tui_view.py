@@ -212,7 +212,7 @@ class TUIView:
         self._display_info(text)
 
     async def handle_guild_selected(self, guild_name: str):
-        self.(f"\n[Success] Guild set to: {guild_name}")
+        self._display_info(f"\n[Success] Guild set to: {guild_name}")
 
     async def handle_available_channels_updated(self, *args):
         text = f"\n--- Channels in {self.app_state.current_guild.name} ---\n"
