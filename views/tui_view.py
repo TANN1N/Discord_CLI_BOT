@@ -119,12 +119,17 @@ class TUIView:
         # 설정 및 일반 정보 핸들러 (print 또는 TUI 로깅)
         self.event_manager.subscribe(EventType.SHOW_TEXT, self.handle_show_text)
         self.event_manager.subscribe(EventType.ERROR, self.handle_error)
+        self.event_manager.subscribe(EventType.CLEAR_DISPLAY, self.handle_clear_display)
         self.event_manager.subscribe(EventType.BOT_READY, self.handle_bot_ready)
         self.event_manager.subscribe(EventType.GUILDS_UPDATED, self.handle_guilds_updated)
         self.event_manager.subscribe(EventType.GUILD_SELECTED, self.handle_guild_selected)
         self.event_manager.subscribe(EventType.AVAILABLE_CHANNELS_UPDATED, self.handle_available_channels_updated)
         self.event_manager.subscribe(EventType.CHANNEL_SELECTED, self.handle_channel_selected)
         self.event_manager.subscribe(EventType.MESSAGES_UPDATED, self.handle_messages_updated)
+        self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_unsupported_feature)
+        self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_unsupported_feature)
+        self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
+        self.event_manager.subscribe(EventType.FILE_DOWNLOAD_COMPLETE, self.handle_file_download_complete)
         logger.info("TUI event listeners registered.")
 
     async def run_tui(self):
@@ -190,6 +195,9 @@ class TUIView:
     async def handle_error(self, error_message: str):
         self._display_info(f"[ERROR] {error_message}", 'class:error')
 
+    async def handle_clear_display(self, *args):
+        pass
+
     async def handle_bot_ready(self, *args):
         self.is_bot_ready.set()
 
@@ -204,7 +212,7 @@ class TUIView:
         self._display_info(text)
 
     async def handle_guild_selected(self, guild_name: str):
-        self._display_info(f"\n[Success] Guild set to: {guild_name}")
+        self.(f"\n[Success] Guild set to: {guild_name}")
 
     async def handle_available_channels_updated(self, *args):
         text = f"\n--- Channels in {self.app_state.current_guild.name} ---\n"
@@ -222,8 +230,9 @@ class TUIView:
 
     async def handle_messages_updated(self, *args):
         self._add_message_to_log([('class:info', f"--- Recent messages in #{self.app_state.current_channel.name} ---")])
-        for msg_text in self.app_state.recent_messages:
-            self._add_message_to_log([('', msg_text)])
+        for msg in self.app_state.recent_messages:
+            formatted_msg = await self.controller.bot_service.format_message_for_tui(msg)
+            self._add_message_to_log(formatted_msg)
         self._add_message_to_log([('class:info', "----------------------------------------")])
 
     async def handle_new_incoming_message(self, message):
@@ -233,4 +242,25 @@ class TUIView:
         else:
             notification = [('class:info', f"[New message in @{message.guild.name}/#{message.channel.name}]")]
             self._add_message_to_log(notification)
+
+    async def handle_unsupported_feature(self, *args):
+        """TUI 모드에서 아직 지원되지 않는 기능에 대한 핸들러입니다."""
+        await self.handle_error("This feature is not yet implemented in TUI mode.")
+
+    async def handle_files_list_updated(self, *args):
+        """캐시된 파일 목록을 TUI에 표시합니다."""
+        self._add_message_to_log([('class:info', f"--- Recent files in #{self.app_state.current_channel.name} ---")])
+        if not self.app_state.file_cache:
+            self._add_message_to_log([('', "  No files found in recent messages.")])
+        else:
+            for idx, attachment in enumerate(self.app_state.file_cache):
+                size_kb = attachment.size / 1024
+                size_str = f"{size_kb / 1024:.2f} MB" if size_kb > 1024 else f"{size_kb:.2f} KB"
+                self._add_message_to_log([('', f"  [{idx + 1}] {attachment.filename} ({size_str})")])
+        self._add_message_to_log([('class:info', "--------------------------------------------------")])
+        self._add_message_to_log([('', "Use '/download <index>' to download a file.")])
+
+    async def handle_file_download_complete(self, file_path: str):
+        """파일 다운로드 완료 메시지를 TUI에 표시합니다."""
+        self._add_message_to_log([('class:info', f"\n[Success] File downloaded to: {file_path}\n")])
 
