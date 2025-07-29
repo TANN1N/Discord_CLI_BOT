@@ -18,7 +18,7 @@ from models.app_state import AppState
 from controllers.command_controller import CommandController
 
 # Views
-from views.cli_view import CLIView
+from views.tui_view import TUIView
 
 # Services
 from services.bot_service import DiscordBotService
@@ -57,11 +57,11 @@ async def main():
     logger.info("Initializing MVC components...")
     bot_service = DiscordBotService(bot, app_state, event_manager)
     command_controller = CommandController(bot_service, app_state, event_manager)
-    cli_view = CLIView(command_controller, app_state, event_manager)
+    tui_view = TUIView(command_controller, app_state, event_manager)
 
     # 4. Register Event Listeners for the View
     logger.info("Registering view event listeners...")
-    cli_view.register_event_listeners()
+    tui_view.register_event_listeners()
 
     # 5. Setup Cogs
     logger.info("Setting up Cogs...")
@@ -96,10 +96,10 @@ async def main():
     try:
         # Start the bot in the background
         bot_task = asyncio.create_task(bot.start(TOKEN))
-        # Start the CLI in the foreground
-        cli_task = asyncio.create_task(cli_view.run_cli())
+        # Start the TUI in the foreground
+        tui_task = asyncio.create_task(tui_view.run_tui())
 
-        await asyncio.gather(bot_task, cli_task)
+        await asyncio.gather(bot_task, tui_task)
 
     except KeyboardInterrupt:
         await event_manager.publish(EventType.SHOW_TEXT, "\n사용자에 의해 봇 시작이 중단되었습니다.")

@@ -307,3 +307,37 @@ class DiscordBotService:
             processed_content = f"{author_display}: {content}"
             
         return f"[{timestamp}] {processed_content}"
+
+    async def format_message_for_tui(self, message: discord.Message) -> list:
+        """Discord 메시지 객체를 TUI에 표시할 서식 있는 텍스트 튜플 리스트로 포맷팅합니다."""
+        timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
+        
+        content = message.content
+        # 멘션 처리 (CLI와 동일)
+        for member in message.mentions:
+            display_name = member.display_name
+            content = content.replace(f"<@{member.id}>", f"@{display_name}")
+            content = content.replace(f"<@!{member.id}>", f"@{display_name}")
+        for role in message.role_mentions:
+            content = content.replace(f"<@&{role.id}>", f"@{role.name}")
+        for channel in message.channel_mentions:
+            content = content.replace(f"<#{channel.id}>", f"#{channel.name}")
+        
+        author_display = message.author.display_name
+        
+        # TUI용 포맷팅된 리스트 생성
+        formatted_list = [
+            ('class:timestamp', f'[{timestamp}] '),
+            ('class:author', f'{author_display}'),
+            ('', ': '),
+            ('', content)
+        ]
+        
+        # 첨부 파일 처리
+        if message.attachments:
+            attachment_texts = [f"📁 {att.filename}" for att in message.attachments]
+            separator = "\n" if content else ""
+            attachment_str = f"{separator}[Attachment(s): {', '.join(attachment_texts)}]";
+            formatted_list.append(('class:attachment', attachment_str))
+            
+        return formatted_list
