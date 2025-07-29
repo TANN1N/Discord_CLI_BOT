@@ -30,7 +30,7 @@ class DiscordBotService:
     async def get_all_guilds_info(self) -> bool:
         """봇이 참여 중인 모든 길드의 정보 (인덱스, 이름, ID)를 반환합니다."""
         if not self.bot.is_ready():
-            await self.event_manager.publish(EventType.ERROR, "[오류] 봇이 Discord에 연결될 때까지 기다려 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 봇이 Discord에 연결될 때까지 기다려 주세요.")
             return False
         
         self.app_state.all_guilds = list(self.bot.guilds)

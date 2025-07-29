@@ -17,7 +17,7 @@ class ChatBridge(commands.Cog):
     async def on_ready(self):
         """봇이 Discord에 연결될 때 호출됩니다."""
         logger.info("Bot is ready and connected to Discord as %s (ID: %s)", self.bot.user, self.bot.user.id)
-        await self.event_manager.publish(EventType.BOT_READY, self.bot.user) # Bot ready Event pub
+        await self.event_manager.publish(EventType.BOT_READY, self.bot.user)
         # 이 시점에서 bot_service가 Discord Bot 객체를 통해 데이터에 접근할 준비가 됩니다.
     
     @commands.Cog.listener()

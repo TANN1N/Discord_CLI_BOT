@@ -60,7 +60,7 @@ class CommandController:
             logger.warning("Unknown command received: %s", command)
             error_message = f"[오류] 알 수 없는 명령어입니다: {command}\n"
             error_message += "명령어 도움말을 보려면 '/help'를 입력해 주세요.\n"
-            await self.event_manager.publish(EventType.ERROR, error_message) # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, error_message)
             return False
 
     async def _help(self, arg: str) -> bool:
@@ -72,7 +72,7 @@ class CommandController:
                 doc = func.__doc__.strip() if func.__doc__ else "설명 없음."
                 help_text += f"{cmd_key:<15} - {doc}\n"
         help_text += ("--------------------------\n")
-        await self.event_manager.publish(EventType.SHOW_TEXT, help_text) # Show text Event pub
+        await self.event_manager.publish(EventType.SHOW_TEXT, help_text)
         return False
 
     async def _list_guilds(self, arg: str) -> bool:
@@ -83,11 +83,11 @@ class CommandController:
     async def _set_guild(self, arg: str) -> bool:
         """서버 인덱스, ID 또는 이름을 사용하여 현재 서버의 설정을 요청합니다."""
         if not arg:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1")
             return False
         
         if not await self.bot_service.select_guild(arg):
-            await self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 서버 인덱스, ID 또는 이름입니다.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 서버 인덱스, ID 또는 이름입니다.")
         return False
 
     async def _list_channels(self, arg: str) -> bool:
