@@ -7,7 +7,6 @@ from core.event_types import EventType
 
 logger = logging.getLogger(__name__)
 
-
 class ChatBridge(commands.Cog):
     def __init__(self, bot: commands.Bot, event_manager: EventManager):
         self.bot = bot
@@ -24,13 +23,12 @@ class ChatBridge(commands.Cog):
     async def on_message(self, message: discord.Message):
         """새로운 메시지가 도착할 때 호출됩니다."""
         # 봇 자신이 보낸 메시지는 무시합니다.
-        if message.author == self.bot.user: 
-            return
+        # if message.author == self.bot.user: 
+        #     return
         
         logger.debug(
-            "New message received in #%s from %s: %s",
+            "New message received in #%s from %s",
             message.channel.name,
-            message.author.name,
-            message.content
+            message.author.name
         )
         await self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)

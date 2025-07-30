@@ -3,6 +3,9 @@ import asyncio
 import logging
 from typing import Callable
 
+import discord
+from datetime import timedelta
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
@@ -123,6 +126,35 @@ class CLIView:
             print("[실패] 다시 시도해 주세요.")
         return False
 
+    def format_message(self, message: discord.Message) -> str:
+        """Discord 메시지 객체를 CLI에 표시할 단일 문자열로 포맷팅합니다."""
+        timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
+        
+        content = message.content
+        for member in message.mentions:
+            display_name = member.display_name
+            content = content.replace(f"<@{member.id}>", f"@{display_name}")
+            content = content.replace(f"<@!{member.id}>", f"@{display_name}")
+        for role in message.role_mentions:
+            content = content.replace(f"<@&{role.id}>", f"@{role.name}")
+        for channel in message.channel_mentions:
+            content = content.replace(f"<#{channel.id}>", f"#{channel.name}")
+        
+        author_display = message.author.display_name
+        
+        file_attachments = []
+        if message.attachments:
+            for attachment in message.attachments:
+                file_attachments.append(f"📁 {attachment.filename}")
+        
+        if file_attachments:
+            separator = "\n" if content else ""
+            processed_content = f"{author_display}: {content}{separator}[Attachment(s): {', '.join(file_attachments)}]"
+        else:
+            processed_content = f"{author_display}: {content}"
+            
+        return f"[{timestamp}] {processed_content}"
+
     # --- Event Handlers ---
 
     async def handle_show_text(self, text: str):
@@ -180,14 +212,15 @@ class CLIView:
             print("  메시지가 없습니다.")
         else:
             for msg in self.app_state.recent_messages:
-                print(msg)
+                formatted_message = self.format_message(msg)
+                print(formatted_message)
         print("----------------------------------------\n")
 
     async def handle_new_incoming_message(self, message):
         logger.debug("Handling NEW_INCOMING_MESSAGE event from channel #%s", message.channel.name)
         # 현재 채널의 메시지인 경우, 일반적인 포맷으로 출력
         if self.app_state.current_channel and message.channel.id == self.app_state.current_channel.id:
-            formatted_message = await self.controller.bot_service.format_message_for_cli(message)
+            formatted_message = self.format_message(message)
             print(f"\n{formatted_message}")
         # 다른 채널의 메시지인 경우, 어디서 온 메시지인지 표시하여 알려줌
         else:
