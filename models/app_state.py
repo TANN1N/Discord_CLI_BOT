@@ -9,5 +9,5 @@ class AppState:
     current_channel: discord.TextChannel | None = None
     all_guilds: list[discord.Guild] = field(default_factory=list)
     available_channels: list[discord.TextChannel] = field(default_factory=list)
-    recent_messages: list[str] = field(default_factory=list)
+    recent_messages: list[discord.Message] = field(default_factory=list)
     file_cache: list[discord.Attachment] = field(default_factory=list)
