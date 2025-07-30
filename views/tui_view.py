@@ -21,6 +21,7 @@ from controllers.command_controller import CommandController
 
 logger = logging.getLogger(__name__)
 
+# TODO 출력 창에서의 입력 제한 하야 함
 class TUIView:
     def __init__(self, controller: CommandController, app_state: AppState, event_manager: EventManager):
         self.controller = controller
@@ -68,6 +69,11 @@ class TUIView:
         self.key_bindings = KeyBindings()
         self.key_bindings.add('c-c')(self._handle_exit)
         self.key_bindings.add('c-d')(self._handle_exit)
+        self.key_bindings.add('tab')(self._focus_next)
+
+    def _focus_next(self, _):
+        """레이아웃의 다음 위젯으로 포커스를 이동시킵니다."""
+        self.layout.focus_next()
 
     def _get_prompt_text(self):
         guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
@@ -143,7 +149,8 @@ class TUIView:
             layout=self.layout,
             key_bindings=self.key_bindings,
             style=self.style,
-            full_screen=True
+            full_screen=True,
+            mouse_support=True
         )
         logger.info("TUI main loop starting.")
         await self.app.run_async()
