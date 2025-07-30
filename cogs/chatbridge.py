@@ -7,7 +7,6 @@ from core.event_types import EventType
 
 logger = logging.getLogger(__name__)
 
-
 class ChatBridge(commands.Cog):
     def __init__(self, bot: commands.Bot, event_manager: EventManager):
         self.bot = bot
@@ -26,6 +25,6 @@ class ChatBridge(commands.Cog):
         logger.debug(
             "New message received in #%s from %s: %s",
             message.channel.name,
-            message.author.name,
+            message.author.name
         )
         await self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
