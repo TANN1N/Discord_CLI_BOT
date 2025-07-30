@@ -21,7 +21,6 @@ from controllers.command_controller import CommandController
 
 logger = logging.getLogger(__name__)
 
-
 class TUIView:
     def __init__(self, controller: CommandController, app_state: AppState, event_manager: EventManager):
         self.controller = controller
@@ -135,11 +134,11 @@ class TUIView:
         # 2. 초기 설정 (CLI 방식)
         if not await self._initial_setup():
             logger.error("Initial setup failed. Exiting application.")
-            print("Initial setup failed. Exiting application.")
+            print("초기 설정에 실패하여 프로그램을 종료합니다.")
             return
 
         # 3. TUI 애플리케이션 실행
-        self._add_message_to_log([('class:info', "Type '/help' for a list of commands.")])
+        self._add_message_to_log([('class:info', "[정보] 명령어 도움말은 '/help'를 입력해 주세요.")])
         self.app = Application(
             layout=self.layout,
             key_bindings=self.key_bindings,
@@ -156,18 +155,23 @@ class TUIView:
         await self.controller._list_guilds("")
         
         while True:
-            guild_input = await self.session.prompt_async("Enter Guild Index, ID, or Name: ")
+            guild_input = await self.session.prompt_async("서버 인덱스, ID 또는 이름을 입력하세요: ")
+            logger.debug("User entered guild: '%s'", guild_input)
             if await self.controller.bot_service.select_guild(guild_input.strip()):
+                logger.info("Guild '%s' selected successfully.", guild_input)
                 break
-            print("Invalid selection. Please try again.")
+            print("[실패] 다시 시도해 주세요.")
 
-        print("\n--- Initial Setup: Select Channel ---")
+        print("\n--- 초기 설정: 채널 선택 ---")
         while True:
-            channel_input = await self.session.prompt_async("Enter Channel Index, ID, or Name: ")
+            channel_input = await self.session.prompt_async("채널 인덱스, ID 또는 이름을 입력하세요: ")
+            logger.debug("User entered channel: '%s'", channel_input)
             if await self.controller.bot_service.select_channel(channel_input.strip()):
+                logger.info("Channel '%s' selected successfully.", channel_input)
                 await self.controller.bot_service.fetch_recent_messages()
                 return True
-            print("Invalid selection. Please try again.")
+            logger.warning("Failed to select channel with input: '%s'. Retrying.", channel_input)
+            print("[실패] 다시 시도해 주세요.")
         return False
 
     def _add_message_to_log(self, message_parts: List[tuple]):
@@ -220,21 +224,28 @@ class TUIView:
     # --- Event Handlers ---
 
     async def handle_show_text(self, text: str):
+        logger.debug("Handling SHOW_TEXT event.")
         self._display_info(text, 'class:info')
 
     async def handle_error(self, error_message: str):
+        logger.debug("Handling ERROR event.")
         self._display_info(f"[ERROR] {error_message}", 'class:error')
 
     async def handle_clear_display(self, *args):
-        pass
+        logger.debug("Handling CLEAR_DISPLAY event.")
+        if self.message_window:
+            self.message_window.buffer.reset()
+        self._add_message_to_log([('class:info', "[정보] 화면의 모든 메시지가 지워졌습니다.")])
 
     async def handle_bot_ready(self, *args):
+        logger.info("Handling BOT_READY event. TUI is now unblocked.")
         self.is_bot_ready.set()
 
     async def handle_guilds_updated(self, *args):
-        text = "\n--- Guilds ---\n"
+        logger.debug("Handling GUILDS_UPDATED event.")
+        text = "\n--- 서버 목록 ---\n"
         if not self.app_state.all_guilds:
-            text += "  No guilds found."
+            text += "  참여 중인 서버가 없습니다."
         else:
             for idx, guild in enumerate(self.app_state.all_guilds):
                 text += f"  [{idx + 1}] {guild.name} (ID: {guild.id})\n"
@@ -242,16 +253,18 @@ class TUIView:
         self._display_info(text)
 
     async def handle_guild_selected(self, guild_name: str):
-        self._display_info(f"\n[Success] Guild set to: {guild_name}")
+        logger.debug("Handling GUILD_SELECTED event for guild: %s", guild_name)
+        self._display_info(f"\n[성공] 서버가 설정되었습니다: {guild_name}")
 
     async def handle_available_channels_updated(self, *args):
-        text = f"\n--- Channels in {self.app_state.current_guild.name} ---\n"
+        text = f"\n--- 채널 목록 (서버: {self.app_state.current_guild.name}) ---\n"
         channels = self.app_state.available_channels
         if not channels:
-            text += "  No text channels available."
+            text += "  사용 가능한 텍스트 채널이 없습니다."
         else:
             for idx, channel in enumerate(channels):
-                text += f"  [{idx + 1}] #{channel.name} (ID: {channel.id})\n"
+                current_indicator = " (현재 선택됨)" if self.app_state.current_channel and self.app_state.current_channel.id == channel.id else ""
+                text += f"  [{idx + 1}] #{channel.name} (ID: {channel.id}){current_indicator}\n"
         text += "-------------------------------------------\n"
         self._display_info(text)
 
@@ -259,38 +272,43 @@ class TUIView:
         self._display_info(f"\n[Success] Channel set to: #{channel_name}\n")
 
     async def handle_messages_updated(self, *args):
-        self._add_message_to_log([('class:info', f"--- Recent messages in #{self.app_state.current_channel.name} ---")])
+        logger.debug("Handling CHANNEL_SELECTED event for channel: %s", self.app_state.current_channel.name)
+        self._add_message_to_log([('class:info', f"--- 최근 메시지 (채널: #{self.app_state.current_channel.name}) ---")])
         for msg in self.app_state.recent_messages:
             formatted_msg = self.format_message(msg)
             self._add_message_to_log(formatted_msg)
         self._add_message_to_log([('class:info', "----------------------------------------")])
 
     async def handle_new_incoming_message(self, message):
+        logger.debug("Handling NEW_INCOMING_MESSAGE event from channel #%s", message.channel.name)
         if self.app_state.current_channel and message.channel.id == self.app_state.current_channel.id:
             formatted_message = self.format_message(message)
             self._add_message_to_log(formatted_message)
         else:
-            notification = [('class:info', f"[New message in @{message.guild.name}/#{message.channel.name}]")]
+            notification = [('class:info', f"[새 메시지 @{message.guild.name}/#{message.channel.name}]")]
             self._add_message_to_log(notification)
 
+    # TODO: Add /ml, /a handler
     async def handle_unsupported_feature(self, *args):
         """TUI 모드에서 아직 지원되지 않는 기능에 대한 핸들러입니다."""
         await self.handle_error("This feature is not yet implemented in TUI mode.")
 
     async def handle_files_list_updated(self, *args):
         """캐시된 파일 목록을 TUI에 표시합니다."""
-        self._add_message_to_log([('class:info', f"--- Recent files in #{self.app_state.current_channel.name} ---")])
+        logger.debug("Handling FILES_LIST_UPDATED event.")
+        self._add_message_to_log([('class:info', f"--- 최근 파일 목록 (채널: #{self.app_state.current_channel.name}) ---")])
         if not self.app_state.file_cache:
-            self._add_message_to_log([('', "  No files found in recent messages.")])
+            self._add_message_to_log([('', "  최근 메시지에서 찾은 파일이 없습니다.")])
         else:
             for idx, attachment in enumerate(self.app_state.file_cache):
                 size_kb = attachment.size / 1024
                 size_str = f"{size_kb / 1024:.2f} MB" if size_kb > 1024 else f"{size_kb:.2f} KB"
                 self._add_message_to_log([('', f"  [{idx + 1}] {attachment.filename} ({size_str})")])
         self._add_message_to_log([('class:info', "--------------------------------------------------")])
-        self._add_message_to_log([('', "Use '/download <index>' to download a file.")])
+        self._add_message_to_log([('', "다운로드하려면 '/download <인덱스>'를 입력하세요.")])
 
     async def handle_file_download_complete(self, file_path: str):
         """파일 다운로드 완료 메시지를 TUI에 표시합니다."""
-        self._add_message_to_log([('class:info', f"\n[Success] File downloaded to: {file_path}\n")])
+        logger.info("Handling FILE_DOWNLOAD_COMPLETE event for path: %s", file_path)
+        self._add_message_to_log([('class:info', f"\n[성공] 파일이 성공적으로 다운로드 되었습니다. -> 저장 경로: {file_path}\n")])
 
