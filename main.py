@@ -99,7 +99,7 @@ async def main():
         # Start the TUI in the foreground
         tui_task = asyncio.create_task(tui_view.run_tui())
 
-        await asyncio.gather(bot_task, tui_task)
+        await asyncio.wait([bot_task, tui_task], return_when="FIRST_COMPLETED")
 
     except KeyboardInterrupt:
         await event_manager.publish(EventType.SHOW_TEXT, "\n사용자에 의해 봇 시작이 중단되었습니다.")
