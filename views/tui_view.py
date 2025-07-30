@@ -1,6 +1,8 @@
 import asyncio
 import logging
 from typing import List
+import discord
+from datetime import timedelta
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import Application
@@ -33,11 +35,10 @@ class TUIView:
         self.is_bot_ready = asyncio.Event()
 
         # TUI 컴포넌트
-        self.message_log: List[List[tuple]] = []
-        
-        self.message_window = Window(
-            content=FormattedTextControl(self._get_formatted_messages, focusable=True),
+        self.message_window = TextArea(
+            scrollbar=True,
             wrap_lines=True,
+            focus_on_click=True
         )
 
         # TextArea를 먼저 생성하고, 그 다음에 buffer에 접근하여 핸들러를 설정합니다.
@@ -68,13 +69,6 @@ class TUIView:
         self.key_bindings = KeyBindings()
         self.key_bindings.add('c-c')(self._handle_exit)
         self.key_bindings.add('c-d')(self._handle_exit)
-
-    def _get_formatted_messages(self):
-        result = []
-        for line in self.message_log:
-            result.extend(line)
-            result.append(('', '\n'))
-        return result
 
     def _get_prompt_text(self):
         guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
@@ -177,15 +171,51 @@ class TUIView:
         return False
 
     def _add_message_to_log(self, message_parts: List[tuple]):
-        self.message_log.append(message_parts)
-        if len(self.message_log) > 200: self.message_log.pop(0)
-        if self.app: self.app.invalidate()
+        buffer = self.message_window.buffer
+        buffer.cursor_position = len(buffer.text)
+        plain_text = "".join(part[1] for part in message_parts) + "\n"
+        buffer.insert_text(plain_text)
+        buffer.cursor_position = len(buffer.text)
 
     def _display_info(self, text: str, style: str = ''):
         if self.app and self.app.is_running:
             self._add_message_to_log([(style, text)])
         else:
             print(text)
+
+    def format_message(self, message: discord.Message) -> list:
+        """Discord 메시지 객체를 TUI에 표시할 서식 있는 텍스트 튜플 리스트로 포맷팅합니다."""
+        timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
+        
+        content = message.content
+        # 멘션 처리 (CLI와 동일)
+        for member in message.mentions:
+            display_name = member.display_name
+            content = content.replace(f"<@{member.id}>", f"@{display_name}")
+            content = content.replace(f"<@!{member.id}>", f"@{display_name}")
+        for role in message.role_mentions:
+            content = content.replace(f"<@&{role.id}>", f"@{role.name}")
+        for channel in message.channel_mentions:
+            content = content.replace(f"<#{channel.id}>", f"#{channel.name}")
+        
+        author_display = message.author.display_name
+        
+        # TUI용 포맷팅된 리스트 생성
+        formatted_list = [
+            ('class:timestamp', f'[{timestamp}] '),
+            ('class:author', f'{author_display}'),
+            ('', ': '),
+            ('', content)
+        ]
+        
+        # 첨부 파일 처리
+        if message.attachments:
+            attachment_texts = [f"📁 {att.filename}" for att in message.attachments]
+            separator = "\n" if content else ""
+            attachment_str = f"{separator}[Attachment(s): {', '.join(attachment_texts)}]";
+            formatted_list.append(('class:attachment', attachment_str))
+            
+        return formatted_list
 
     # --- Event Handlers ---
 
@@ -231,13 +261,13 @@ class TUIView:
     async def handle_messages_updated(self, *args):
         self._add_message_to_log([('class:info', f"--- Recent messages in #{self.app_state.current_channel.name} ---")])
         for msg in self.app_state.recent_messages:
-            formatted_msg = await self.controller.bot_service.format_message_for_tui(msg)
+            formatted_msg = self.format_message(msg)
             self._add_message_to_log(formatted_msg)
         self._add_message_to_log([('class:info', "----------------------------------------")])
 
     async def handle_new_incoming_message(self, message):
         if self.app_state.current_channel and message.channel.id == self.app_state.current_channel.id:
-            formatted_message = await self.controller.bot_service.format_message_for_tui(message)
+            formatted_message = self.format_message(message)
             self._add_message_to_log(formatted_message)
         else:
             notification = [('class:info', f"[New message in @{message.guild.name}/#{message.channel.name}]")]
