@@ -23,14 +23,9 @@ class ChatBridge(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """새로운 메시지가 도착할 때 호출됩니다."""
-        # 봇 자신이 보낸 메시지도 처리합니다. (기존의 무시 로직 제거)
-        # if message.author == self.bot.user: 
-        #     return
-        
         logger.debug(
             "New message received in #%s from %s: %s",
             message.channel.name,
             message.author.name,
-            message.content
         )
         await self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
