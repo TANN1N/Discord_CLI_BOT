@@ -22,9 +22,15 @@ class ChatBridge(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """새로운 메시지가 도착할 때 호출됩니다."""
+
+        if message.author == self.bot.user:
+            await self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
+            return
+
         logger.debug(
             "New message received in #%s from %s: %s",
             message.channel.name,
-            message.author.name
+            message.author.name,
+            message.content
         )
         await self.event_manager.publish(EventType.NEW_INCOMING_MESSAGE, message)
