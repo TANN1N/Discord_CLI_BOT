@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from typing import List
 import discord
 from datetime import timedelta
+from typing import Callable, List
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import Application
@@ -30,6 +30,9 @@ class TUIView:
         self.is_running = True
         self.app = None
         
+        # 핸들러 교체를 위한 변수
+        self._original_accept_handler = None
+        
         # 초기 설정을 위한 컴포넌트
         self.session = PromptSession()
         self.is_bot_ready = asyncio.Event()
@@ -41,13 +44,13 @@ class TUIView:
             focus_on_click=True
         )
 
-        # TextArea를 먼저 생성하고, 그 다음에 buffer에 접근하여 핸들러를 설정합니다.
         self.input_field = TextArea(
             multiline=False,
             wrap_lines=False,
             prompt=self._get_prompt_text
         )
         self.input_buffer = self.input_field.buffer
+        # _accept_input을 기본 핸들러로 설정
         self.input_buffer.accept_handler = self._accept_input
 
         self.root_container = HSplit([
@@ -64,6 +67,7 @@ class TUIView:
             'attachment': 'italic #0000ff',
             'error': 'bg:#ff0000 #ffffff',
             'info': '#0088ff',
+            'prompt.multiline': 'bg:#00aaff #ffffff',
         })
 
         self.key_bindings = KeyBindings()
@@ -76,18 +80,21 @@ class TUIView:
         self.layout.focus_next()
 
     def _get_prompt_text(self):
+        # 다중 라인 모드일 때 프롬프트 변경
+        if self.input_buffer.accept_handler == self._handle_multiline_input:
+            return [('class:prompt.multiline', 'ML MODE (@END to finish) > ')]
+
         guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
         channel_name = f"#{self.app_state.current_channel.name}" if self.app_state.current_channel else "No Channel"
         return f"[{guild_name} | {channel_name}]> "
 
     def _accept_input(self, buffer: Buffer) -> bool:
-        """사용자가 엔터를 눌렀을 때 호출되는 핸들러. bool을 반환해야 합니다."""
+        """사용자가 엔터를 눌렀을 때 호출되는 기본 핸들러."""
         user_input = buffer.text.strip()
         
         if user_input:
             asyncio.create_task(self._process_input_async(user_input))
         
-        # 입력창은 항상 비우고, 핸들러가 입력을 처리했음을 알립니다.
         buffer.text = ""
         return True
 
@@ -112,10 +119,7 @@ class TUIView:
 
     def register_event_listeners(self):
         logger.debug("Registering TUI event listeners...")
-        # TUI 모드 핸들러
         self.event_manager.subscribe(EventType.NEW_INCOMING_MESSAGE, self.handle_new_incoming_message)
-        
-        # 설정 및 일반 정보 핸들러 (print 또는 TUI 로깅)
         self.event_manager.subscribe(EventType.SHOW_TEXT, self.handle_show_text)
         self.event_manager.subscribe(EventType.ERROR, self.handle_error)
         self.event_manager.subscribe(EventType.CLEAR_DISPLAY, self.handle_clear_display)
@@ -125,7 +129,7 @@ class TUIView:
         self.event_manager.subscribe(EventType.AVAILABLE_CHANNELS_UPDATED, self.handle_available_channels_updated)
         self.event_manager.subscribe(EventType.CHANNEL_SELECTED, self.handle_channel_selected)
         self.event_manager.subscribe(EventType.MESSAGES_UPDATED, self.handle_messages_updated)
-        self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_unsupported_feature)
+        self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_request_multiline_input)
         self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_unsupported_feature)
         self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
         self.event_manager.subscribe(EventType.FILE_DOWNLOAD_COMPLETE, self.handle_file_download_complete)
@@ -295,10 +299,56 @@ class TUIView:
             notification = [('class:info', f"[새 메시지 @{message.guild.name}/#{message.channel.name}]")]
             self._add_message_to_log(notification)
 
-    # TODO: Add /ml, /a handler
+    # TODO: Add /a handler
     async def handle_unsupported_feature(self, *args):
         """TUI 모드에서 아직 지원되지 않는 기능에 대한 핸들러입니다."""
         await self.handle_error("This feature is not yet implemented in TUI mode.")
+
+    def _handle_multiline_input(self, buffer: Buffer) -> bool:
+        """다중 라인 입력을 처리하는 임시 핸들러."""
+        line = buffer.text
+        buffer.text = "" # 다음 입력을 위해 비움
+
+        if line.strip().upper() == '@END':
+            self.input_buffer.accept_handler = self._original_accept_handler
+            self._original_accept_handler = None
+            self._add_message_to_log([('class:info', "다중 라인 입력 모드가 종료되었습니다.")])
+            logger.info("Multiline input mode finished. Restored original accept handler.")
+            if self.lines and self._ml_on_complete:
+                full_message = "\n".join(self.lines)
+                self._ml_on_complete(full_message)
+            self.lines = None
+            self._ml_on_complete = None
+        
+        
+        elif self.lines is not None:
+            self.lines.append(line)
+        
+        return True
+
+    async def handle_request_multiline_input(self, on_complete: Callable):
+        """다중 라인 입력 모드를 시작하고 accept 핸들러를 교체합니다."""
+        logger.debug("Handling REQUEST_MULTILINE_INPUT event.")
+        
+        # 이미 다중 라인 모드인 경우 중복 실행 방지
+        if self.input_buffer.accept_handler == self._handle_multiline_input:
+            await self.handle_error("Already in multiline input mode.")
+            return
+
+        self.lines = []
+        self._ml_on_complete = on_complete
+        
+        # 핸들러 교체
+        self._original_accept_handler = self.input_buffer.accept_handler
+        self.input_buffer.accept_handler = self._handle_multiline_input
+        
+        # 사용자에게 안내 메시지 표시
+        info_text = "\n--- 여러 줄 메시지 입력 모드 ---\n" \
+                    "  입력을 마치려면 새 줄에 '@END'를 입력하고 Enter를 누르세요.\n" \
+                    "---------------------------------"
+        self._add_message_to_log([('class:info', info_text)])
+        
+        logger.info("Switched to multiline input mode.")
 
     async def handle_files_list_updated(self, *args):
         """캐시된 파일 목록을 TUI에 표시합니다."""
@@ -318,4 +368,5 @@ class TUIView:
         """파일 다운로드 완료 메시지를 TUI에 표시합니다."""
         logger.info("Handling FILE_DOWNLOAD_COMPLETE event for path: %s", file_path)
         self._add_message_to_log([('class:info', f"\n[성공] 파일이 성공적으로 다운로드 되었습니다. -> 저장 경로: {file_path}\n")])
+
 
