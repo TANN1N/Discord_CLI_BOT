@@ -314,12 +314,14 @@ class TUIView:
             self._original_accept_handler = None
             self._add_message_to_log([('class:info', "다중 라인 입력 모드가 종료되었습니다.")])
             logger.info("Multiline input mode finished. Restored original accept handler.")
+            
             if self.lines and self._ml_on_complete:
                 full_message = "\n".join(self.lines)
-                self._ml_on_complete(full_message)
+                # on_complete가 코루틴이므로 asyncio.create_task로 실행
+                asyncio.create_task(self._ml_on_complete(full_message))
+
             self.lines = None
             self._ml_on_complete = None
-        
         
         elif self.lines is not None:
             self.lines.append(line)
@@ -337,12 +339,11 @@ class TUIView:
 
         self.lines = []
         self._ml_on_complete = on_complete
-        
+
         # 핸들러 교체
         self._original_accept_handler = self.input_buffer.accept_handler
         self.input_buffer.accept_handler = self._handle_multiline_input
         
-        # 사용자에게 안내 메시지 표시
         info_text = "\n--- 여러 줄 메시지 입력 모드 ---\n" \
                     "  입력을 마치려면 새 줄에 '@END'를 입력하고 Enter를 누르세요.\n" \
                     "---------------------------------"
