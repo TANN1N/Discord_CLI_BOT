@@ -32,6 +32,10 @@ class TUIView:
         
         # 핸들러 교체를 위한 변수
         self._original_accept_handler = None
+        self._ml_on_complete = None
+        self._ml_lines = None
+        self._file_input_on_complete = None
+        self._file_input_path = None
         
         # 초기 설정을 위한 컴포넌트
         self.session = PromptSession()
@@ -83,6 +87,11 @@ class TUIView:
         # 다중 라인 모드일 때 프롬프트 변경
         if self.input_buffer.accept_handler == self._handle_multiline_input:
             return [('class:prompt.multiline', 'ML MODE (@END to finish) > ')]
+        if self.input_buffer.accept_handler == self._handle_file_input:
+            if self._file_input_path is None:
+                return [('class:prompt.multiline', 'File Path > ')]
+            else:
+                return [('class:prompt.multiline', 'Caption (optional) > ')]
 
         guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
         channel_name = f"#{self.app_state.current_channel.name}" if self.app_state.current_channel else "No Channel"
@@ -130,7 +139,7 @@ class TUIView:
         self.event_manager.subscribe(EventType.CHANNEL_SELECTED, self.handle_channel_selected)
         self.event_manager.subscribe(EventType.MESSAGES_UPDATED, self.handle_messages_updated)
         self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_request_multiline_input)
-        self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_unsupported_feature)
+        self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_request_file_input)
         self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
         self.event_manager.subscribe(EventType.FILE_DOWNLOAD_COMPLETE, self.handle_file_download_complete)
         logger.info("TUI event listeners registered.")
@@ -234,6 +243,10 @@ class TUIView:
 
     # --- Event Handlers ---
 
+    async def handle_unsupported_feature(self, *args):
+        """TUI 모드에서 아직 지원되지 않는 기능에 대한 핸들러입니다."""
+        await self.handle_error("This feature is not yet implemented in TUI mode.")
+
     async def handle_show_text(self, text: str):
         logger.debug("Handling SHOW_TEXT event.")
         self._display_info(text, 'class:info')
@@ -288,7 +301,6 @@ class TUIView:
         for msg in self.app_state.recent_messages:
             formatted_msg = self.format_message(msg)
             self._add_message_to_log(formatted_msg)
-        self._add_message_to_log([('class:info', "----------------------------------------")])
 
     async def handle_new_incoming_message(self, message):
         logger.debug("Handling NEW_INCOMING_MESSAGE event from channel #%s", message.channel.name)
@@ -298,11 +310,67 @@ class TUIView:
         else:
             notification = [('class:info', f"[새 메시지 @{message.guild.name}/#{message.channel.name}]")]
             self._add_message_to_log(notification)
+            self._add_message_to_log([('class:info', "----------------------------------------")])
 
-    # TODO: Add /a handler
-    async def handle_unsupported_feature(self, *args):
-        """TUI 모드에서 아직 지원되지 않는 기능에 대한 핸들러입니다."""
-        await self.handle_error("This feature is not yet implemented in TUI mode.")
+    def _restore_original_handler(self):
+        """입력 핸들러를 원래 상태로 복원합니다."""
+        if self._original_accept_handler:
+            self.input_buffer.accept_handler = self._original_accept_handler
+            self._original_accept_handler = None
+        
+        # 상태 초기화
+        self._ml_lines = None
+        self._ml_on_complete = None
+        self._file_input_path = None
+        self._file_input_on_complete = None
+
+    def _handle_file_input(self, buffer: Buffer):
+        """파일 경로와 캡션 입력을 순차적으로 처리하는 핸들러."""
+        user_input = buffer.text.strip()
+        buffer.text = ""
+
+        # 파일 경로 입력 단계
+        if self._file_input_path is None:
+            if not user_input:  # 사용자가 입력을 취소한 경우
+                self._add_message_to_log([('class:info', "파일 첨부가 취소되었습니다.")])
+                self._restore_original_handler()
+                return True
+            
+            self._file_input_path = user_input
+            # 다음 프롬프트(캡션)를 위해 버퍼를 비워 둔다.
+            return True
+
+        # 캡션 입력 단계
+        else:
+            caption = user_input
+            file_path = self._file_input_path
+            on_complete = self._file_input_on_complete
+
+            self._add_message_to_log([('class:info', "파일 첨부 요청이 전송되었습니다.")])
+            self._restore_original_handler()
+            
+            if on_complete:
+                asyncio.create_task(on_complete(file_path, caption))
+            
+            return True
+
+    async def handle_request_file_input(self, on_complete: Callable, initial_arg: str):
+        """파일 첨부를 위한 입력을 처리하는 임시 핸들러를 설정합니다."""
+        logger.debug("Handling REQUEST_FILE_INPUT event.")
+        if self.input_buffer.accept_handler in [self._handle_multiline_input, self._handle_file_input]:
+            await self.handle_error("다른 입력 모드가 이미 활성화되어 있습니다.")
+            return
+
+        self._file_input_on_complete = on_complete
+        self._original_accept_handler = self.input_buffer.accept_handler
+        self.input_buffer.accept_handler = self._handle_file_input
+        
+        info_text = "\n--- 파일 첨부 모드 ---\n" \
+                    "  파일 경로를 입력하세요. 취소하려면 아무것도 입력하지 않고 Enter를 누르세요.\n" \
+                    "--------------------------"
+        self._add_message_to_log([('class:info', info_text)])
+        logger.info("Switched to file input mode.")
+
 
     def _handle_multiline_input(self, buffer: Buffer) -> bool:
         """다중 라인 입력을 처리하는 임시 핸들러."""
@@ -310,21 +378,17 @@ class TUIView:
         buffer.text = "" # 다음 입력을 위해 비움
 
         if line.strip().upper() == '@END':
-            self.input_buffer.accept_handler = self._original_accept_handler
-            self._original_accept_handler = None
-            self._add_message_to_log([('class:info', "다중 라인 입력 모드가 종료되었습니다.")])
-            logger.info("Multiline input mode finished. Restored original accept handler.")
-            
-            if self.lines and self._ml_on_complete:
-                full_message = "\n".join(self.lines)
+            if self._ml_lines and self._ml_on_complete:
+                full_message = "\n".join(self._ml_lines)
                 # on_complete가 코루틴이므로 asyncio.create_task로 실행
                 asyncio.create_task(self._ml_on_complete(full_message))
 
-            self.lines = None
-            self._ml_on_complete = None
+            self._restore_original_handler()
+            self._add_message_to_log([('class:info', "다중 라인 입력 모드가 종료되었습니다.")])
+            logger.info("Multiline input mode finished. Restored original accept handler.")
         
-        elif self.lines is not None:
-            self.lines.append(line)
+        elif self._ml_lines is not None:
+            self._ml_lines.append(line)
         
         return True
 
@@ -337,7 +401,7 @@ class TUIView:
             await self.handle_error("Already in multiline input mode.")
             return
 
-        self.lines = []
+        self._ml_lines = []
         self._ml_on_complete = on_complete
 
         # 핸들러 교체
