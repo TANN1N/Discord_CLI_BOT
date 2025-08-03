@@ -138,6 +138,8 @@ class TUIView:
         self.event_manager.subscribe(EventType.AVAILABLE_CHANNELS_UPDATED, self.handle_available_channels_updated)
         self.event_manager.subscribe(EventType.CHANNEL_SELECTED, self.handle_channel_selected)
         self.event_manager.subscribe(EventType.MESSAGES_UPDATED, self.handle_messages_updated)
+        self.event_manager.subscribe(EventType.SELF_MESSAGES_UPDATED, self.handle_self_messages_updated)
+        self.event_manager.subscribe(EventType.DELETE_MESSAGE_REQUESTED, self.handle_unsupported_feature)
         self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_request_multiline_input)
         self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_request_file_input)
         self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
@@ -312,6 +314,19 @@ class TUIView:
             self._add_message_to_log(notification)
             self._add_message_to_log([('class:info', "----------------------------------------")])
 
+    async def handle_self_messages_updated(self, *args):
+        """캐시된 자신의 메시지 목록을 TUI에 표시합니다."""
+        logger.debug("Handling SELF_MESSAGES_UPDATED event.")
+        self._add_message_to_log([('class:info', f"--- 최근 메시지 목록 (채널: #{self.app_state.current_channel.name}) ---")])
+        if not self.app_state.recent_self_messages:
+            self._add_message_to_log([('', "  최근 메시지에서 찾은 자신의 메시지가 없습니다.")])
+        else:
+            for idx, msg in enumerate(self.app_state.recent_self_messages):
+                # 메시지의 내용이 너무 길 수 있으므로 최대 20자까지만 표시하도록 함
+                self._add_message_to_log([('', f"  [{idx + 1}] {msg.content[:20]}")])
+            self._add_message_to_log([('class:info', "--------------------------------------------------")])
+            self._add_message_to_log([('', "삭제하기 위해서는 '/delete <인덱스>'를 입력하세요.")])
+
     def _restore_original_handler(self):
         """입력 핸들러를 원래 상태로 복원합니다."""
         if self._original_accept_handler:
@@ -426,8 +441,8 @@ class TUIView:
                 size_kb = attachment.size / 1024
                 size_str = f"{size_kb / 1024:.2f} MB" if size_kb > 1024 else f"{size_kb:.2f} KB"
                 self._add_message_to_log([('', f"  [{idx + 1}] {attachment.filename} ({size_str})")])
-        self._add_message_to_log([('class:info', "--------------------------------------------------")])
-        self._add_message_to_log([('', "다운로드하려면 '/download <인덱스>'를 입력하세요.")])
+            self._add_message_to_log([('class:info', "--------------------------------------------------")])
+            self._add_message_to_log([('', "다운로드하려면 '/download <인덱스>'를 입력하세요.")])
 
     async def handle_file_download_complete(self, file_path: str):
         """파일 다운로드 완료 메시지를 TUI에 표시합니다."""

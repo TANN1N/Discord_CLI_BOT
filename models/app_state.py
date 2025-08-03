@@ -10,4 +10,5 @@ class AppState:
     all_guilds: list[discord.Guild] = field(default_factory=list)
     available_channels: list[discord.TextChannel] = field(default_factory=list)
     recent_messages: list[discord.Message] = field(default_factory=list)
+    recent_self_messages: list[discord.Message] = field(default_factory=list)
     file_cache: list[discord.Attachment] = field(default_factory=list)

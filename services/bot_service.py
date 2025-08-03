@@ -131,7 +131,7 @@ class DiscordBotService:
         logger.warning("Could not find channel with value: '%s' in guild '%s'", value, self.app_state.current_guild.name)
         return False
 
-    async def fetch_recent_messages(self, count: int = 20) -> bool:
+    async def fetch_recent_messages(self, limit: int = 20) -> bool:
         """
         현재 채널의 최근 메시지를 가져와 app_state에 업데이트합니다.
         성공 여부를 반환합니다. 
@@ -142,7 +142,7 @@ class DiscordBotService:
         
         messages = []
         try:
-            async for msg in self.app_state.current_channel.history(limit=count):
+            async for msg in self.app_state.current_channel.history(limit=limit):
                 messages.append(msg)
             logger.info("Successfully fetched %d messages.", len(messages))
         except discord.errors.Forbidden:
@@ -160,6 +160,38 @@ class DiscordBotService:
         
         self.app_state.recent_messages = list(reversed(messages))
         await self.event_manager.publish(EventType.MESSAGES_UPDATED)
+        return True
+
+    async def fetch_recent_self_messages(self, limit: int = 50) -> bool:
+        """
+        현재 채널에서 봇 자신의 최근 메시지를 가져와 app_state에 업데이트합니다.
+        성공 여부를 반환합니다. 
+        """
+        if not self.app_state.current_channel:
+            await self.event_manager.publish(EventType.ERROR, "먼저 채널을 선택해 주세요.") # Error Event pub
+            return False
+        
+        messages = []
+        try:
+            async for msg in self.app_state.current_channel.history(limit=limit):
+                if msg.author == self.bot.user:
+                    messages.append(msg)
+            logger.info("Successfully cached %d messages.", len(messages))
+        except discord.errors.Forbidden:
+            logger.warning(
+                "Failed to cache messages from channel %s due to Forbidden error.",
+                self.app_state.current_channel.name
+            )
+            await self.event_manager.publish(EventType.ERROR, "채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
+        except Exception as e:
+            logger.exception(
+                "An unexpected error occurred while chaching messages from channel %s.",
+                self.app_state.current_channel.name
+            )
+            await self.event_manager.publish(EventType.ERROR, f"메시지 가져오기 실패: {e}")
+        
+        self.app_state.recent_self_messages = list(reversed(messages))
+        await self.event_manager.publish(EventType.SELF_MESSAGES_UPDATED)
         return True
 
     async def fetch_recent_files(self, limit: int = 50) -> bool:

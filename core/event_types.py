@@ -29,6 +29,11 @@ class EventType(Enum):
     
     # Message Events
     MESSAGES_UPDATED = auto()
+    SELF_MESSAGES_UPDATED = auto()
+    DELETE_MESSAGE_REQUESTED = auto()
+    # TODO: Add and implement 2 event below
+    # DELETE_MESSAGE_COMPLETE = auto()
+    # EDIT_MESSAGE_REQUESTED = auto
     MESSAGE_SENT_SUCCESS = auto()
     FILE_SENT_SUCCESS = auto()
     

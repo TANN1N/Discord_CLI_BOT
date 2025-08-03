@@ -36,6 +36,8 @@ class CommandController:
             '/sc': self._set_channel,
             '/read': self._read,
             '/r': self._read,
+            '/self_messages': self._get_self_messages,
+            '/sm': self._get_self_messages,
             '/multiline': self._multiline_input,
             '/ml': self._multiline_input,
             '/attach': self._attach_file,
@@ -111,17 +113,32 @@ class CommandController:
 
     async def _read(self, arg: str) -> bool:
         """현재 채널의 최근 메시지를 지정된 개수(기본값 20)만큼 불러옵니다."""
-        count = 20
+        limit = 20
         if arg:
             try:
-                count = int(arg)
-                if not (1 <= count <= 100):
+                limit = int(arg)
+                if not (1 <= limit <= 100):
                     await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 1에서 100 사이여야 합니다.")
                     return False
             except ValueError:
                 await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 숫자여야 합니다.")
                 return False
-        await self.bot_service.fetch_recent_messages(count)
+        await self.bot_service.fetch_recent_messages(limit)
+        return False
+
+    async def _get_self_messages(self, arg: str) -> bool:
+        """현재 채널에서 자신의 최근 메시지를 지정된 개수(기본값 50) 만큼 불러옵니다."""
+        limit = 50
+        if arg:
+            try:
+                limit = int(arg)
+                if not (1 <= limit <= 100):
+                    await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 1에서 100 사이여야 합니다.")
+                    return False
+            except ValueError:
+                await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 숫자여야 합니다.")
+                return False
+        await self.bot_service.fetch_recent_self_messages(limit)
         return False
 
     async def _clear(self, arg: str) -> bool:
