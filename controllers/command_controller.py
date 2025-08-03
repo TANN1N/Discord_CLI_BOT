@@ -58,7 +58,7 @@ class CommandController:
             return await handler(arg)
         else:
             logger.warning("Unknown command received: %s", command)
-            error_message = f"[오류] 알 수 없는 명령어입니다: {command}\n"
+            error_message = f"알 수 없는 명령어입니다: {command}\n"
             error_message += "명령어 도움말을 보려면 '/help'를 입력해 주세요.\n"
             await self.event_manager.publish(EventType.ERROR, error_message)
             return False
@@ -83,11 +83,11 @@ class CommandController:
     async def _set_guild(self, arg: str) -> bool:
         """서버 인덱스, ID 또는 이름을 사용하여 현재 서버의 설정을 요청합니다."""
         if not arg:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1")
+            await self.event_manager.publish(EventType.ERROR, "서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1")
             return False
         
         if not await self.bot_service.select_guild(arg):
-            await self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 서버 인덱스, ID 또는 이름입니다.")
+            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 서버 인덱스, ID 또는 이름입니다.")
         return False
 
     async def _list_channels(self, arg: str) -> bool:
@@ -95,18 +95,18 @@ class CommandController:
         if self.app_state.current_guild:
             await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED)
         else:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 목록을 보려면 먼저 서버를 선택해 주세요. '/setguild' 사용.")
+            await self.event_manager.publish(EventType.ERROR, "채널 목록을 보려면 먼저 서버를 선택해 주세요. '/setguild' 사용.")
         return False
 
     async def _set_channel(self, arg: str) -> bool:
         """채널 인덱스, ID 또는 이름을 사용하여 현재 채널을 설정합니다."""
         if not arg:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 인덱스, ID 또는 이름을 입력해 주세요. 예: /setchannel 1\n /setchannel 123456789012345678\n /setchannel 일반")
+            await self.event_manager.publish(EventType.ERROR, "채널 인덱스, ID 또는 이름을 입력해 주세요. 예: /setchannel 1\n /setchannel 123456789012345678\n /setchannel 일반")
 
         if await self.bot_service.select_channel(arg):
             await self.bot_service.fetch_recent_messages()
         else:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
+            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
         return False
 
     async def _read(self, arg: str) -> bool:
@@ -116,10 +116,10 @@ class CommandController:
             try:
                 count = int(arg)
                 if not (1 <= count <= 100):
-                    await self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 1에서 100 사이여야 합니다.")
+                    await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 1에서 100 사이여야 합니다.")
                     return False
             except ValueError:
-                await self.event_manager.publish(EventType.ERROR, "[오류] 읽을 메시지 개수는 숫자여야 합니다.")
+                await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 숫자여야 합니다.")
                 return False
         await self.bot_service.fetch_recent_messages(count)
         return False
@@ -147,7 +147,7 @@ class CommandController:
     async def _list_files(self, arg: str) -> bool:
         """현재 채널의 최근 파일 목록을 표시합니다. (기본 50개 메시지 스캔)"""
         if not self.app_state.current_channel:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요. '/setchannel' 사용.")
+            await self.event_manager.publish(EventType.ERROR, "먼저 채널을 선택해 주세요. '/setchannel' 사용.")
             return False
         
         limit = 50
@@ -155,10 +155,10 @@ class CommandController:
             try:
                 limit = int(arg)
                 if not (1 <= limit <= 200):
-                    await self.event_manager.publish(EventType.ERROR, "[오류] 스캔할 메시지 개수는 1에서 200 사이여야 합니다.")
+                    await self.event_manager.publish(EventType.ERROR, "스캔할 메시지 개수는 1에서 200 사이여야 합니다.")
                     return False
             except ValueError:
-                await self.event_manager.publish(EventType.ERROR, "[오류] 스캔할 메시지 개수는 숫자여야 합니다.")
+                await self.event_manager.publish(EventType.ERROR, "스캔할 메시지 개수는 숫자여야 합니다.")
                 return False
         
         await self.event_manager.publish(EventType.SHOW_TEXT, f"[정보] 최근 {limit}개 메시지에서 파일을 검색합니다...")
@@ -168,21 +168,21 @@ class CommandController:
     async def _download_file(self, arg: str) -> bool:
         """인덱스를 사용하여 캐시된 파일 목록에서 파일을 다운로드합니다."""
         if not arg:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 다운로드할 파일의 인덱스를 입력해 주세요. 예: /download 1")
+            await self.event_manager.publish(EventType.ERROR, "다운로드할 파일의 인덱스를 입력해 주세요. 예: /download 1")
             return False
         
         try:
             index = int(arg)
         except ValueError:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 파일 인덱스는 숫자여야 합니다.")
+            await self.event_manager.publish(EventType.ERROR, "파일 인덱스는 숫자여야 합니다.")
             return False
         
         if not self.app_state.file_cache:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 파일 목록이 비어있습니다. 먼저 '/files'를 실행해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "파일 목록이 비어있습니다. 먼저 '/files'를 실행해 주세요.")
             return False
             
         if not (1 <= index <= len(self.app_state.file_cache)):
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, f"유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
             return False
 
         await self.event_manager.publish(EventType.FILE_DOWNLOAD_REQUESTED, index)

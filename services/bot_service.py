@@ -30,7 +30,7 @@ class DiscordBotService:
     async def get_all_guilds_info(self) -> bool:
         """봇이 참여 중인 모든 길드의 정보 (인덱스, 이름, ID)를 반환합니다."""
         if not self.bot.is_ready():
-            await self.event_manager.publish(EventType.ERROR, "[오류] 봇이 Discord에 연결될 때까지 기다려 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "봇이 Discord에 연결될 때까지 기다려 주세요.")
             return False
         
         self.app_state.all_guilds = list(self.bot.guilds)
@@ -89,7 +89,7 @@ class DiscordBotService:
     async def select_channel(self, value: str) -> bool:
         """주어진 인덱스, ID 또는 이름으로 현재 채널을 설정합니다."""
         if not self.app_state.current_guild:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널을 설정하려면 먼저 서버를 선택해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "채널을 설정하려면 먼저 서버를 선택해 주세요.") # Error Event pub
             return False
 
         channel_found = None
@@ -137,7 +137,7 @@ class DiscordBotService:
         성공 여부를 반환합니다. 
         """
         if not self.app_state.current_channel:
-            await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "먼저 채널을 선택해 주세요.") # Error Event pub
             return False
         
         messages = []
@@ -150,13 +150,13 @@ class DiscordBotService:
                 "Failed to fetch messages from channel %s due to Forbidden error.",
                 self.app_state.current_channel.name
             )
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "채널 메시지 읽기 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
         except Exception as e:
             logger.exception(
                 "An unexpected error occurred while fetching messages from channel %s.",
                 self.app_state.current_channel.name
             )
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 가져오기 실패: {e}")
+            await self.event_manager.publish(EventType.ERROR, f"메시지 가져오기 실패: {e}")
         
         self.app_state.recent_messages = list(reversed(messages))
         await self.event_manager.publish(EventType.MESSAGES_UPDATED)
@@ -166,8 +166,8 @@ class DiscordBotService:
         """현재 채널의 최근 파일들을 가져와 file_cache에 캐싱하고 성공 여부를 반환합니다."""
         logger.info("Fetching recent files from last %d messages in #%s.", limit, self.app_state.current_channel.name if self.app_state.current_channel else "None")
         if not self.app_state.current_channel:
-            logger.warning("[오류] 먼저 채널을 선택해 주세요.")
-            await self.event_manager.publish(EventType.ERROR, "[오류] 먼저 채널을 선택해 주세요.") # Error Event pub
+            logger.warning(" 먼저 채널을 선택해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "먼저 채널을 선택해 주세요.") # Error Event pub
             return False
         
         files = []
@@ -182,10 +182,10 @@ class DiscordBotService:
 
         except discord.errors.Forbidden:
             logger.warning("Forbidden to read history in channel #%s", self.app_state.current_channel.name)
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널 히스토리 읽기 권한이 없습니다.")
+            await self.event_manager.publish(EventType.ERROR, "채널 히스토리 읽기 권한이 없습니다.")
         except Exception as e:
             logger.exception("Error fetching files from channel #%s", self.app_state.current_channel.name)
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 목록 가져오기 실패: {e}")
+            await self.event_manager.publish(EventType.ERROR, f"파일 목록 가져오기 실패: {e}")
         
         return False
 
@@ -213,20 +213,20 @@ class DiscordBotService:
                         await self.event_manager.publish(EventType.FILE_DOWNLOAD_COMPLETE, file_path)
                     else:
                         logger.error("Error downloading file '%s': status %d", attachment.filename, resp.status)
-                        await self.event_manager.publish(EventType.ERROR, f"[오류] '{attachment.filename}' 다운로드 실패 (HTTP 상태: {resp.status})")
+                        await self.event_manager.publish(EventType.ERROR, f"'{attachment.filename}' 다운로드 실패 (HTTP 상태: {resp.status})")
 
         except IndexError:
             logger.error("Invalid file index %d requested. Cache size is %d.", index, len(self.app_state.file_cache))
-            await self.event_manager.publish(EventType.ERROR, "[오류] 잘못된 파일 인덱스입니다.")
+            await self.event_manager.publish(EventType.ERROR, "잘못된 파일 인덱스입니다.")
         except Exception as e:
             logger.exception("An unexpected error occurred during file download for index %d.", index)
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 다운로드 중 예외 발생: {e}")
+            await self.event_manager.publish(EventType.ERROR, f"파일 다운로드 중 예외 발생: {e}")
 
     async def send_message(self, content: str) -> bool:
         """현재 채널에 메시지를 전송하고 성공 여부를 반환합니다."""
         if not self.app_state.current_channel:
             logger.error("Cannot send message, no channel is selected.")
-            await self.event_manager.publish(EventType.ERROR, "[오류] 메시지를 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "메시지를 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
             return False
         
         try:
@@ -238,25 +238,25 @@ class DiscordBotService:
                 "Failed to send message to channel %s due to Forbidden error.",
                 self.app_state.current_channel.name
             )
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널에 메시지를 보낼 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "채널에 메시지를 보낼 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
         except Exception as e:
             logger.exception(
                 "An unexpected error occurred while sending message to channel %s.",
                 self.app_state.current_channel.name
             )
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 메시지 전송 실패: {e}")
+            await self.event_manager.publish(EventType.ERROR, f"메시지 전송 실패: {e}")
         return False
 
     async def send_file(self, file_path: str, content: str | None = None) -> bool:
         """지정된 파일을 현재 채널에 전송하고 성공 여부를 반환합니다."""
         if not self.app_state.current_channel:
             logger.error("Cannot send file, no channel is selected.")
-            await self.event_manager.publish(EventType.ERROR, "[오류] 파일을 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, "파일을 보낼 채널이 선택되지 않았습니다. 채널을 설정해 주세요.") # Error Event pub
             return False
         
         if not os.path.exists(file_path):
             logger.error("File not found at path: %s", file_path)
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일을 찾을 수 없습니다: '{file_path}'") # Error Event pub
+            await self.event_manager.publish(EventType.ERROR, f"파일을 찾을 수 없습니다: '{file_path}'") # Error Event pub
             return False
             
         try:
@@ -270,11 +270,11 @@ class DiscordBotService:
                 "Failed to send file to channel %s due to Forbidden error.",
                 self.app_state.current_channel.name
             )
-            await self.event_manager.publish(EventType.ERROR, "[오류] 채널에 파일을 첨부할 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
+            await self.event_manager.publish(EventType.ERROR, "채널에 파일을 첨부할 권한이 없습니다. 봇 역할 권한을 확인해 주세요.")
         except Exception as e:
             logger.exception(
                 "An unexpected error occurred while sending file to channel %s.",
                 self.app_state.current_channel.name
             )
-            await self.event_manager.publish(EventType.ERROR, f"[오류] 파일 전송 실패: {e}")
+            await self.event_manager.publish(EventType.ERROR, f"파일 전송 실패: {e}")
         return False
