@@ -28,3 +28,5 @@ htmlcov/
 /discord_cli_bot/
 
 bot.txt
+.crush/
+CRUSH.md
