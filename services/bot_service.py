@@ -250,11 +250,11 @@ class DiscordBotService:
         
         return False
 
-    async def download_file_by_index(self, index: int):
+    async def download_file_by_index(self, index: int = 0):
         """인덱스를 사용하여 file_cache에서 파일을 다운로드합니다."""
         logger.info("Request to download file at index %d.", index)
         try:
-            attachment = self.app_state.file_cache[index - 1]
+            attachment = self.app_state.file_cache[index]
             
             if not os.path.exists(DOWNLOADS_DIR):
                 logger.info("Downloads directory does not exist. Creating it at '%s'.", DOWNLOADS_DIR)

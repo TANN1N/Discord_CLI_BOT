@@ -201,23 +201,20 @@ class CommandController:
 
     async def _download_file(self, arg: str) -> bool:
         """인덱스를 사용하여 캐시된 파일 목록에서 파일을 다운로드합니다."""
-        if not arg:
-            await self.event_manager.publish(EventType.ERROR, "다운로드할 파일의 인덱스를 입력해 주세요. 예: /download 1")
-            return False
-        
-        try:
-            index = int(arg)
-        except ValueError:
-            await self.event_manager.publish(EventType.ERROR, "파일 인덱스는 숫자여야 합니다.")
-            return False
-        
         if not self.app_state.file_cache:
             await self.event_manager.publish(EventType.ERROR, "파일 목록이 비어있습니다. 먼저 '/files'를 실행해 주세요.")
             return False
-            
-        if not (1 <= index <= len(self.app_state.file_cache)):
-            await self.event_manager.publish(EventType.ERROR, f"유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
-            return False
+        
+        index = 0
+        if arg:
+            try:
+                index = int(arg) - 1
+                if not (1 <= index <= len(self.app_state.file_cache)):
+                    await self.event_manager.publish(EventType.ERROR, f"유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
+                    return False
+            except ValueError:
+                await self.event_manager.publish(EventType.ERROR, "파일 인덱스는 숫자여야 합니다.")
+                return False
 
         await self.event_manager.publish(EventType.FILE_DOWNLOAD_REQUESTED, index)
         return False
