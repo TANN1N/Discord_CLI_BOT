@@ -30,7 +30,7 @@ class EventType(Enum):
     # Message Events
     MESSAGES_UPDATED = auto()
     SELF_MESSAGES_UPDATED = auto()
-    DELETE_MESSAGE_REQUESTED = auto()
+    # TODO: Add and implement 2 event below
     DELETE_MESSAGE_COMPLETE = auto()
     # EDIT_MESSAGE_REQUESTED = auto
     MESSAGE_SENT_SUCCESS = auto()
@@ -43,13 +43,3 @@ class EventType(Enum):
     FILE_DOWNLOAD_COMPLETE = auto()
     
     NEW_INCOMING_MESSAGE = auto()
-
-    # Command Controller -> Bot Service Events
-    REQUEST_GUILD_LIST = auto()
-    REQUEST_GUILD_SELECT = auto()
-    REQUEST_CHANNEL_SELECT = auto()
-    REQUEST_FETCH_MESSAGES = auto()
-    REQUEST_FETCH_SELF_MESSAGES = auto()
-    REQUEST_SEND_MESSAGE = auto()
-    REQUEST_SEND_FILE = auto()
-    REQUEST_BOT_SHUTDOWN = auto()
