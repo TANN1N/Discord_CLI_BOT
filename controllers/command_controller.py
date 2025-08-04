@@ -3,7 +3,6 @@ import asyncio
 import logging
 from typing import Callable
 
-from services.bot_service import DiscordBotService 
 from models.app_state import AppState
 from core.event_manager import EventManager
 from core.event_types import EventType
@@ -18,8 +17,7 @@ class CommandController:
     명령어를 입력 받고 인자를 받으며 해당 내용을 통해 Service에게 작업을 요청하고 몇가지 메시지를 출력합니다. 
     그러나 직접적으로 Service의 메서드를 호출하거나 View 대신 메시지를 출력하는 것은 지양하며 Event-Driven 방식을 통해 각 클래스와 통신합니다. 
     """
-    def __init__(self, bot_service: DiscordBotService, app_state: AppState, event_manager: EventManager):
-        self.bot_service = bot_service
+    def __init__(self, app_state: AppState, event_manager: EventManager):
         self.app_state = app_state
         self.event_manager = event_manager
         # 명령어와 해당 핸들러 메서드를 매핑합니다.
@@ -82,7 +80,7 @@ class CommandController:
 
     async def _list_guilds(self, arg: str) -> bool:
         """봇이 참여하고 있는 서버 목록을 표시하도록 요청합니다."""
-        await self.bot_service.get_all_guilds_info()
+        await self.event_manager.publish(EventType.REQUEST_GUILD_LIST)
         return False
 
     async def _set_guild(self, arg: str) -> bool:
@@ -91,8 +89,7 @@ class CommandController:
             await self.event_manager.publish(EventType.ERROR, "서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1")
             return False
         
-        if not await self.bot_service.select_guild(arg):
-            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 서버 인덱스, ID 또는 이름입니다.")
+        await self.event_manager.publish(EventType.REQUEST_GUILD_SELECT, arg)
         return False
 
     async def _list_channels(self, arg: str) -> bool:
@@ -107,11 +104,9 @@ class CommandController:
         """채널 인덱스, ID 또는 이름을 사용하여 현재 채널을 설정합니다."""
         if not arg:
             await self.event_manager.publish(EventType.ERROR, "채널 인덱스, ID 또는 이름을 입력해 주세요. 예: /setchannel 1\n /setchannel 123456789012345678\n /setchannel 일반")
+            return False
 
-        if await self.bot_service.select_channel(arg):
-            await self.bot_service.fetch_recent_messages()
-        else:
-            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
+        await self.event_manager.publish(EventType.REQUEST_CHANNEL_SELECT, arg)
         return False
 
     async def _read(self, arg: str) -> bool:
@@ -126,7 +121,7 @@ class CommandController:
             except ValueError:
                 await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 숫자여야 합니다.")
                 return False
-        await self.bot_service.fetch_recent_messages(limit)
+        await self.event_manager.publish(EventType.REQUEST_FETCH_MESSAGES, limit)
         return False
 
     async def _get_self_messages(self, arg: str) -> bool:
@@ -141,7 +136,7 @@ class CommandController:
             except ValueError:
                 await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 숫자여야 합니다.")
                 return False
-        await self.bot_service.fetch_recent_self_messages(limit)
+        await self.event_manager.publish(EventType.REQUEST_FETCH_SELF_MESSAGES, limit)
         return False
 
     async def _delete_self_message(self, arg: str) -> bool:
@@ -150,13 +145,13 @@ class CommandController:
         if arg:
             try:
                 index = int(arg) - 1
-                if not (0 <= index <= len(self.app_state.recent_self_messages)):
+                if not (0 <= index < len(self.app_state.recent_self_messages)):
                     await self.event_manager.publish(EventType.ERROR, "삭제할 메시지의 인덱스는 캐시된 메시지 범위 안에 있어야 합니다.")
                     return False
             except ValueError:
                 await self.event_manager.publish(EventType.ERROR, "삭제할 메시지의 인덱스는 숫자여야 합니다.")
                 return False
-        await self.bot_service.delete_self_message()
+        await self.event_manager.publish(EventType.DELETE_MESSAGE_REQUESTED, index)
         return False
 
     async def _clear(self, arg: str) -> bool:
@@ -168,14 +163,14 @@ class CommandController:
         """여러 줄 메시지 입력 모드로 전환합니다. 입력을 마치려면 새로운 줄에 @END를 입력하세요."""
         async def on_complete(text: str):
             if text.strip():
-                await self.bot_service.send_message(text)
+                await self.event_manager.publish(EventType.REQUEST_SEND_MESSAGE, text)
         await self.event_manager.publish(EventType.REQUEST_MULTILINE_INPUT, on_complete)
         return False
 
     async def _attach_file(self, arg: str) -> bool:
         """지정된 파일을 현재 채널에 첨부합니다. (예: /a C:/path/file.png '캡션')"""
         async def on_complete(file_path: str, caption: str | None):
-            await self.bot_service.send_file(file_path, caption)
+            await self.event_manager.publish(EventType.REQUEST_SEND_FILE, file_path=file_path, caption=caption)
         await self.event_manager.publish(EventType.REQUEST_FILE_INPUT, on_complete, arg)
         return False
 
@@ -210,7 +205,7 @@ class CommandController:
         if arg:
             try:
                 index = int(arg) - 1
-                if not (1 <= index <= len(self.app_state.file_cache)):
+                if not (0 <= index < len(self.app_state.file_cache)):
                     await self.event_manager.publish(EventType.ERROR, f"유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
                     return False
             except ValueError:
@@ -223,5 +218,5 @@ class CommandController:
     async def _quit(self, arg: str) -> bool:
         """봇을 종료합니다."""
         await self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 봇을 종료합니다...")
-        await self.bot_service.bot.close()
+        await self.event_manager.publish(EventType.REQUEST_BOT_SHUTDOWN)
         return True

@@ -22,7 +22,16 @@ class DiscordBotService:
         self.app_state = app_state
         self.event_manager = event_manager
         self._cached_channels: list[discord.TextChannel] = []
-        logger.debug("Registering file-related event listeners...")
+        # Command controller requests
+        self.event_manager.subscribe(EventType.REQUEST_GUILD_LIST, self.handle_request_guild_list)
+        self.event_manager.subscribe(EventType.REQUEST_GUILD_SELECT, self.handle_request_guild_select)
+        self.event_manager.subscribe(EventType.REQUEST_CHANNEL_SELECT, self.handle_request_channel_select)
+        self.event_manager.subscribe(EventType.REQUEST_FETCH_MESSAGES, self.handle_request_fetch_messages)
+        self.event_manager.subscribe(EventType.REQUEST_FETCH_SELF_MESSAGES, self.handle_request_fetch_self_messages)
+        self.event_manager.subscribe(EventType.DELETE_MESSAGE_REQUESTED, self.handle_request_delete_message)
+        self.event_manager.subscribe(EventType.REQUEST_SEND_MESSAGE, self.handle_request_send_message)
+        self.event_manager.subscribe(EventType.REQUEST_SEND_FILE, self.handle_request_send_file)
+        self.event_manager.subscribe(EventType.REQUEST_BOT_SHUTDOWN, self.shutdown_bot)
         self.event_manager.subscribe(EventType.FILES_LIST_REQUESTED, self.fetch_recent_files)
         self.event_manager.subscribe(EventType.FILE_DOWNLOAD_REQUESTED, self.download_file_by_index)
         logger.info("DiscordBotService initialized.")
@@ -339,3 +348,38 @@ class DiscordBotService:
             )
             await self.event_manager.publish(EventType.ERROR, f"파일 전송 실패: {e}")
         return False
+
+    async def shutdown_bot(self, *args, **kwargs):
+        """봇을 종료합니다."""
+        logger.info("Shutdown requested. Closing bot connection...")
+        await self.bot.close()
+
+    # --- Event Handlers for CommandController Requests ---
+
+    async def handle_request_guild_list(self, *args, **kwargs):
+        await self.get_all_guilds_info()
+
+    async def handle_request_guild_select(self, guild_identifier: str, *args, **kwargs):
+        await self.select_guild(guild_identifier):
+
+    async def handle_request_channel_select(self, channel_identifier: str, *args, **kwargs):
+        if await self.select_channel(channel_identifier):
+            # 채널 선택 성공 시, 최근 메시지를 자동으로 가져옵니다.
+            await self.fetch_recent_messages()
+        else:
+            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
+
+    async def handle_request_fetch_messages(self, limit: int, *args, **kwargs):
+        await self.fetch_recent_messages(limit)
+
+    async def handle_request_fetch_self_messages(self, limit: int, *args, **kwargs):
+        await self.fetch_recent_self_messages(limit)
+
+    async def handle_request_delete_message(self, index: int, *args, **kwargs):
+        await self.delete_self_message(index)
+
+    async def handle_request_send_message(self, content: str, *args, **kwargs):
+        await self.send_message(content)
+
+    async def handle_request_send_file(self, file_path: str, caption: str, *args, **kwargs):
+        await self.send_file(file_path, caption)

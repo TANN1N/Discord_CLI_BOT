@@ -56,7 +56,7 @@ async def main():
     # 3. Initialize Services, Controllers, and Views with Dependency Injection
     logger.info("Initializing MVC components...")
     bot_service = DiscordBotService(bot, app_state, event_manager)
-    command_controller = CommandController(bot_service, app_state, event_manager)
+    command_controller = CommandController(app_state, event_manager)
     tui_view = TUIView(command_controller, app_state, event_manager)
 
     # 4. Register Event Listeners for the View
