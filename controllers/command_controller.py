@@ -51,6 +51,7 @@ class CommandController:
             '/clear': self._clear,
             '/cls': self._clear,
             '/quit': self._quit,
+            '/q': self._quit,
         }
 
     async def handle_command(self, command: str, arg: str) -> bool:
