@@ -74,6 +74,7 @@ class DiscordBotService:
             logger.info("Successfully selected guild: %s (ID: %s)", guild_found.name, guild_found.id)
             self.app_state.current_guild = guild_found
             self.app_state.current_channel = None # 길드 변경 시 채널 초기화
+            self.app_state.recent_self_messages.clear() # 길드 변경 시 자신의 메시지 캐싱 초기화
             self.app_state.file_cache.clear() # 길드 변경 시 파일 캐시 초기화
             # 현재 길드의 텍스트 채널 목록을 캐싱합니다.
             self.app_state.available_channels = [ch for ch in guild_found.channels if isinstance(ch, discord.TextChannel)]
@@ -124,6 +125,7 @@ class DiscordBotService:
         if channel_found and isinstance(channel_found, discord.TextChannel):
             logger.info("Successfully selected channel: #%s (ID: %s)", channel_found.name, channel_found.id)
             self.app_state.current_channel = channel_found
+            self.app_state.recent_self_messages.clear() # 채널 변경 시 자신의 메시지 캐싱 초기화
             self.app_state.file_cache.clear() # 채널 변경 시 파일 캐시 초기화
             await self.event_manager.publish(EventType.CHANNEL_SELECTED, channel_found.name) # Channel selected Event pub
             return True
