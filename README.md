@@ -14,10 +14,10 @@
 
 ## 아키텍처
 
-이 프로젝트는 **MVC-S (Model-View-Controller-Service)** 패턴과 **이벤트 기반(Event-Driven)** 구조를 채택하여 각 컴포넌트의 역할을 명확히 분리하고 결합도를 낮췄습니다.
+이 프로젝트는 **MVC-S (Model-View-Controller-Service)** 패턴과 **TUI(Text-based User Interface)**, **이벤트 기반(Event-Driven)** 구조를 채택하여 각 컴포넌트의 역할을 명확히 분리하고 결합도를 낮췄습니다.
 
 -   **Model (`models/app_state.py`)**: 애플리케이션의 상태(현재 서버/채널, 메시지 목록 등)를 관리하는 데이터 클래스입니다.
--   **View (`views/cli_view.py`)**: 사용자에게 보여지는 CLI 화면을 렌더링하고, 사용자 입력을 받아 Controller에 전달합니다. `prompt_toolkit`을 사용하여 CLI 환경을 구성합니다.
+-   **View (`views/cli_view.py`, `views/tui_view.py`)**: 사용자에게 보여지는 CLI/TUI 화면을 렌더링하고, 사용자 입력을 받아 Controller에 전달합니다. `prompt_toolkit`을 사용하여 CLI/TUI 환경을 구성합니다.
 -   **Controller (`controllers/command_controller.py`)**: `/help`, `/setguild` 등과 같은 사용자 명령어를 해석하고, 이에 맞는 비즈니스 로직을 Service에 요청하는 역할을 합니다.
 -   **Service (`services/bot_service.py`)**: Discord API와 직접 통신하며 봇의 핵심 비즈니스 로직(메시지 전송, 채널 목록 조회 등)을 수행합니다.
 -   **Core System (`core/`)**:
@@ -34,7 +34,8 @@ discord_cli_bot/
 ├── models/
 │   └── app_state.py            # (M) 애플리케이션 상태 모델
 ├── views/
-│   └── cli_view.py             # (V) CLI 사용자 인터페이스
+│   ├── cli_view.py             # (V) CLI 사용자 인터페이스
+│   └── tui_view.py             # (V) TUI 사용자 인터페이스
 ├── controllers/
 │   └── command_controller.py   # (C) 사용자 명령어 처리
 ├── services/
@@ -50,15 +51,17 @@ discord_cli_bot/
 ## 설치 및 실행
 
 ### 1. 필수 라이브러리 설치
+먼저, 프로젝트에 필요한 모든 라이브러리를 `requirements.txt` 파일을 사용하여 한 번에 설치합니다.
 
 ```bash
-pip install discord.py python-dotenv prompt_toolkit aiohttp
+pip install -r requirements.txt
 ```
 
 -   **`discord.py`**: Discord API와 상호작용하는 비동기 라이브러리
 -   **`python-dotenv`**: `.env` 파일에서 환경 변수를 로드
--   **`prompt_toolkit`**: 향상된 CLI 환경을 제공
+-   **`prompt_toolkit`**: 향상된 CLI/TUI 환경을 제공
 -   **`aiohttp`**: `discord.py`가 내부적으로 사용하는 비동기 HTTP 클라이언트. 또한 파일 다운로드에 사용됩니다. 
+-   **`aiofiles`**: 비동기적으로 파일을 읽고 쓸 때 사용됩니다. 
 
 ### 2. 환경 변수 설정 (`.env` 파일)
 
