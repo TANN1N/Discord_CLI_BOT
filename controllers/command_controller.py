@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class CommandController:
     """
-    커맨드 라인 인터페이스(CLI)에서의 유저 입력을 핸들링합니다. 
+    View로부터 받은 유저 입력을 핸들링합니다. 
     MVC 패턴에서 Controller에 해당합니다. 
-    명령어를 입력 받고 인자를 받으며 해당 내용을 통해 BotService에게 작업을 요청하고 몇가지 메시지를 출력합니다. 
-    그러나 직접적으로 BotService의 메서드를 호출하거나 View(CLIManager) 대신 메시지를 출력하는 것은 지양하며 Event-Driven 방식을 통해 각 클래스와 통신합니다. 
+    명령어를 입력 받고 인자를 받으며 해당 내용을 통해 Service에게 작업을 요청하고 몇가지 메시지를 출력합니다. 
+    그러나 직접적으로 Service의 메서드를 호출하거나 View 대신 메시지를 출력하는 것은 지양하며 Event-Driven 방식을 통해 각 클래스와 통신합니다. 
     """
     def __init__(self, bot_service: DiscordBotService, app_state: AppState, event_manager: EventManager):
         self.bot_service = bot_service
