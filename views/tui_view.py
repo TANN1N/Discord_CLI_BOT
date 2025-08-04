@@ -139,7 +139,7 @@ class TUIView:
         self.event_manager.subscribe(EventType.CHANNEL_SELECTED, self.handle_channel_selected)
         self.event_manager.subscribe(EventType.MESSAGES_UPDATED, self.handle_messages_updated)
         self.event_manager.subscribe(EventType.SELF_MESSAGES_UPDATED, self.handle_self_messages_updated)
-        self.event_manager.subscribe(EventType.DELETE_MESSAGE_REQUESTED, self.handle_unsupported_feature)
+        self.event_manager.subscribe(EventType.DELETE_MESSAGE_COMPLETE, self.handle_delete_message_complete)
         self.event_manager.subscribe(EventType.REQUEST_MULTILINE_INPUT, self.handle_request_multiline_input)
         self.event_manager.subscribe(EventType.REQUEST_FILE_INPUT, self.handle_request_file_input)
         self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
@@ -295,10 +295,11 @@ class TUIView:
         self._display_info(text)
 
     async def handle_channel_selected(self, channel_name: str):
-        self._display_info(f"\n[Success] Channel set to: #{channel_name}\n")
+        logger.debug("Handling CHANNEL_SELECTED event.")
+        self._display_info(f"\n[성공] 채널이 설정되었습니다: #{channel_name}\n")
 
     async def handle_messages_updated(self, *args):
-        logger.debug("Handling CHANNEL_SELECTED event for channel: %s", self.app_state.current_channel.name)
+        logger.debug("Handling MESSAGES_UPDATED event for channel: %s", self.app_state.current_channel.name)
         self._add_message_to_log([('class:info', f"--- 최근 메시지 (채널: #{self.app_state.current_channel.name}) ---")])
         for msg in self.app_state.recent_messages:
             formatted_msg = self.format_message(msg)
@@ -326,6 +327,10 @@ class TUIView:
                 self._add_message_to_log([('', f"  [{idx + 1}] {msg.content[:20]}")])
             self._add_message_to_log([('class:info', "--------------------------------------------------")])
             self._add_message_to_log([('', "삭제하기 위해서는 '/delete <인덱스>'를 입력하세요.")])
+
+    async def handle_delete_message_complete(self, m_id: int):
+        logger.debug("Handling DELETE_MESSAGE_COMPLETE event.")
+        self._display_info(f"\n[Success] delete message id: {m_id}\n")
 
     def _restore_original_handler(self):
         """입력 핸들러를 원래 상태로 복원합니다."""
@@ -363,6 +368,7 @@ class TUIView:
 
             self._add_message_to_log([('class:info', "파일 첨부 요청이 전송되었습니다.")])
             self._restore_original_handler()
+            logger.info("File input mode finished. Restored original accept handler.")
             
             if on_complete:
                 asyncio.create_task(on_complete(file_path, caption))
@@ -385,7 +391,6 @@ class TUIView:
                     "--------------------------"
         self._add_message_to_log([('class:info', info_text)])
         logger.info("Switched to file input mode.")
-
 
     def _handle_multiline_input(self, buffer: Buffer) -> bool:
         """다중 라인 입력을 처리하는 임시 핸들러."""
@@ -448,5 +453,3 @@ class TUIView:
         """파일 다운로드 완료 메시지를 TUI에 표시합니다."""
         logger.info("Handling FILE_DOWNLOAD_COMPLETE event for path: %s", file_path)
         self._add_message_to_log([('class:info', f"\n[성공] 파일이 성공적으로 다운로드 되었습니다. -> 저장 경로: {file_path}\n")])
-
-

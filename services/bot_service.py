@@ -192,9 +192,36 @@ class DiscordBotService:
             )
             await self.event_manager.publish(EventType.ERROR, f"메시지 가져오기 실패: {e}")
         
-        self.app_state.recent_self_messages = list(reversed(messages))
+        self.app_state.recent_self_messages = list(messages)
         await self.event_manager.publish(EventType.SELF_MESSAGES_UPDATED)
         return True
+
+    async def delete_self_message(self, index: int = 0):
+        """캐시된 자신의 메시지에서 해당하는 인덱스에 해당하는 메시지를 삭제합니다."""
+        if not self.app_state.recent_self_messages:
+            logger.warning(" 먼저 /self_messages를 사용해 자신의 메시지를 캐싱해주세요.")
+            await self.event_manager.publish(EventType.ERROR, "먼저 /self_messages를 사용해 자신의 메시지를 캐싱해주세요.")
+            return
+
+        try:
+            message = self.app_state.recent_self_messages[index]
+            m_id = message.id
+            logger.debug("Trying to delete message %d", m_id)
+            await message.delete()
+            logger.debug("Message deleted successfully")
+            await self.event_manager.publish(EventType.DELETE_MESSAGE_COMPLETE, m_id)
+
+        except IndexError as e:
+            logger.exception("IndexError to get message at recent self messages (index %d)", index)
+        except discord.errors.Forbidden:
+            logger.warning("Forbidden to delete message %d", message.id)
+            await self.event_manager.publish(EventType.ERROR, "메시지를 지우기 위한 권한이 없습니다.")
+        except discord.errors.NotFound:
+            logger.warning("NotFound to delete message %d", message.id)
+            await self.event_manager.publish(EventType.ERROR, "메시지가 이미 삭제되었습니다.")
+        except Exception as e:
+            logger.exception("An unexpected error occurred during deleting message for index %d.", index)
+            await self.event_manager.publish(EventType.ERROR, f"메시지 삭제 중 예외 발생: {e}")
 
     async def fetch_recent_files(self, limit: int = 50) -> bool:
         """현재 채널의 최근 파일들을 가져와 file_cache에 캐싱하고 성공 여부를 반환합니다."""
