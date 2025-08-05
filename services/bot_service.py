@@ -92,6 +92,7 @@ class DiscordBotService:
             return True
         
         logger.warning("Could not find guild with value: '%s'", value)
+        await self.event_manager.publish(EventType.ERROR, "유효하지 않은 서버 인덱스, ID 또는 이름입니다.")
         return False
 
     async def select_channel(self, value: str) -> bool:
@@ -134,10 +135,12 @@ class DiscordBotService:
             self.app_state.current_channel = channel_found
             self.app_state.recent_self_messages.clear() # 채널 변경 시 자신의 메시지 캐싱 초기화
             self.app_state.file_cache.clear() # 채널 변경 시 파일 캐시 초기화
+            await self.fetch_recent_messages()
             await self.event_manager.publish(EventType.CHANNEL_SELECTED, channel_found.name) # Channel selected Event pub
             return True
             
         logger.warning("Could not find channel with value: '%s' in guild '%s'", value, self.app_state.current_guild.name)
+        await self.event_manager.publish(EventType.ERROR, "유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
         return False
 
     async def fetch_recent_messages(self, limit: int = 20) -> bool:

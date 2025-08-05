@@ -24,34 +24,20 @@ class CommandController:
         self.event_manager = event_manager
         # 명령어와 해당 핸들러 메서드를 매핑합니다.
         self.commands = {
-            '/help': self._help,
-            '/h': self._help,
-            '/listguilds': self._list_guilds,
-            '/lg': self._list_guilds,
-            '/setguild': self._set_guild,
-            '/sg': self._set_guild,
-            '/listchannels': self._list_channels,
-            '/lc': self._list_channels,
-            '/setchannel': self._set_channel,
-            '/sc': self._set_channel,
-            '/read': self._read,
-            '/r': self._read,
-            '/self_messages': self._get_self_messages,
-            '/sm': self._get_self_messages,
-            '/delete': self._delete_self_message,
-            '/d': self._delete_self_message,
-            '/multiline': self._multiline_input,
-            '/ml': self._multiline_input,
-            '/attach': self._attach_file,
-            '/a': self._attach_file,
-            '/files': self._list_files,
-            '/f': self._list_files,
-            '/download': self._download_file,
-            '/dl': self._download_file,
-            '/clear': self._clear,
-            '/cls': self._clear,
-            '/quit': self._quit,
-            '/q': self._quit,
+            '/help': self._help, '/h': self._help,
+            '/listguilds': self._list_guilds, '/lg': self._list_guilds,
+            '/setguild': self._set_guild, '/sg': self._set_guild,
+            '/listchannels': self._list_channels, '/lc': self._list_channels,
+            '/setchannel': self._set_channel, '/sc': self._set_channel,
+            '/read': self._read, '/r': self._read,
+            '/self_messages': self._get_self_messages, '/sm': self._get_self_messages,
+            '/delete': self._delete_self_message, '/d': self._delete_self_message,
+            '/multiline': self._multiline_input, '/ml': self._multiline_input,
+            '/attach': self._attach_file, '/a': self._attach_file,
+            '/files': self._list_files, '/f': self._list_files,
+            '/download': self._download_file, '/dl': self._download_file,
+            '/clear': self._clear, '/cls': self._clear,
+            '/quit': self._quit, '/q': self._quit,
         }
 
     async def handle_command(self, command: str, arg: str) -> bool:
@@ -91,8 +77,7 @@ class CommandController:
             await self.event_manager.publish(EventType.ERROR, "서버 인덱스, ID 또는 이름을 입력해 주세요. 예: /setguild 1")
             return False
         
-        if not await self.bot_service.select_guild(arg):
-            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 서버 인덱스, ID 또는 이름입니다.")
+        await self.event_manager.publish(EventType.GUILD_SELECT_REQUEST, arg)
         return False
 
     async def _list_channels(self, arg: str) -> bool:
@@ -108,12 +93,10 @@ class CommandController:
         if not arg:
             await self.event_manager.publish(EventType.ERROR, "채널 인덱스, ID 또는 이름을 입력해 주세요. 예: /setchannel 1\n /setchannel 123456789012345678\n /setchannel 일반")
 
-        if await self.bot_service.select_channel(arg):
-            await self.bot_service.fetch_recent_messages()
-        else:
-            await self.event_manager.publish(EventType.ERROR, "유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
+        await self.event_manager.publish(EventType.CHANNEL_SELECT_REQUEST, arg)
         return False
 
+    # TODO Continue refactor 
     async def _read(self, arg: str) -> bool:
         """현재 채널의 최근 메시지를 지정된 개수(기본값 20)만큼 불러옵니다."""
         limit = 20
@@ -156,7 +139,7 @@ class CommandController:
             except ValueError:
                 await self.event_manager.publish(EventType.ERROR, "삭제할 메시지의 인덱스는 숫자여야 합니다.")
                 return False
-        await self.bot_service.delete_self_message()
+        await self.event_manager.publish(EventType.MESSAGE_DELETE_REQUEST, index)
         return False
 
     async def _clear(self, arg: str) -> bool:
