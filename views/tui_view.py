@@ -117,7 +117,7 @@ class TUIView:
                     self.is_running = False
                     if self.app: self.app.exit()
             else:
-                await self.controller.bot_service.send_message(user_input)
+                await self.event_manager.publish(EventType.MESSAGE_SEND_REQUEST, user_input)
         except Exception as e:
             logger.exception("Error processing user input: %s", user_input)
             await self.handle_error(f"Input processing error: {e}")
@@ -128,11 +128,11 @@ class TUIView:
 
     def register_event_listeners(self):
         logger.debug("Registering TUI event listeners...")
-        self.event_manager.subscribe(EventType.MESSAGE_RECEIVED, self.handle_new_incoming_message)
-        self.event_manager.subscribe(EventType.UI_TEXT_SHOW_REQUEST, self.handle_show_text)
-        self.event_manager.subscribe(EventType.ERROR, self.handle_error)
-        self.event_manager.subscribe(EventType.UI_DISPLAY_CLEAR_REQUEST, self.handle_clear_display)
         self.event_manager.subscribe(EventType.BOT_STATUS_READY, self.handle_bot_ready)
+        self.event_manager.subscribe(EventType.ERROR, self.handle_error)
+        self.event_manager.subscribe(EventType.UI_TEXT_SHOW_REQUEST, self.handle_show_text)
+        self.event_manager.subscribe(EventType.UI_DISPLAY_CLEAR_REQUEST, self.handle_clear_display)
+        self.event_manager.subscribe(EventType.MESSAGE_RECEIVED, self.handle_new_incoming_message)
         self.event_manager.subscribe(EventType.GUILDS_UPDATED, self.handle_guilds_updated)
         self.event_manager.subscribe(EventType.GUILD_SELECTED, self.handle_guild_selected)
         self.event_manager.subscribe(EventType.CHANNELS_UPDATED, self.handle_available_channels_updated)
@@ -172,25 +172,46 @@ class TUIView:
         logger.info("TUI main loop finished.")
 
     async def _initial_setup(self) -> bool:
-        logger.info("Starting initial setup process.")
-        print("\n--- Initial Setup: Select Guild ---")
+        logger.debug("Starting initial setup process.")
+        logger.debug("--- Initial Setup: Select Guild ---")
+        print("\n--- 초기 설정: 서버 선택 ---")
         await self.controller._list_guilds("")
         
         while True:
             guild_input = await self.session.prompt_async("서버 인덱스, ID 또는 이름을 입력하세요: ")
-            logger.debug("User entered guild: '%s'", guild_input)
-            if await self.controller.bot_service.select_guild(guild_input.strip()):
-                logger.info("Guild '%s' selected successfully.", guild_input)
+            guild_input = guild_input.strip()
+            
+            if not guild_input:
+                print("[실패] 서버 인덱스, ID 또는 이름을 입력하세요.")
+                continue
+            
+            logger.debug("User entereing guild: '%s'", guild_input)
+            await self.event_manager.publish(EventType.GUILD_SELECT_REQUEST, guild_input)
+            await asyncio.sleep(0) # 이벤트 핸들러가 app_state를 업데이트할 시간을 줌
+            
+            if self.app_state.current_guild:
+                logger.info("Guild '%s' selected successfully.", self.app_state.current_guild.name)
                 break
+            logger.warning("Failed to select guild with input: '%s'. Retrying", guild_input)
             print("[실패] 다시 시도해 주세요.")
 
+        logger.debug("--- Initial Setup: Select Channel ---")
         print("\n--- 초기 설정: 채널 선택 ---")
         while True:
             channel_input = await self.session.prompt_async("채널 인덱스, ID 또는 이름을 입력하세요: ")
-            logger.debug("User entered channel: '%s'", channel_input)
-            if await self.controller.bot_service.select_channel(channel_input.strip()):
-                logger.info("Channel '%s' selected successfully.", channel_input)
-                await self.controller.bot_service.fetch_recent_messages()
+            channel_input = channel_input.strip()
+            
+            if not channel_input:
+                print("[실패] 채널 인덱스, ID 또는 이름을 입력하세요.")
+                continue
+            
+            logger.debug("User entereing channel: '%s'", channel_input)
+            await self.event_manager.publish(EventType.CHANNEL_SELECT_REQUEST, channel_input)
+            await asyncio.sleep(0) # 이벤트 핸들러가 app_state를 업데이트할 시간
+            
+            if self.app_state.current_channel:
+                logger.info("Channel '%s' selected successfully.", self.app_state.current_channel.name)
+                await self.event_manager.publish(EventType.MESSAGES_RECENT_FETCH_REQUEST)
                 return True
             logger.warning("Failed to select channel with input: '%s'. Retrying.", channel_input)
             print("[실패] 다시 시도해 주세요.")
@@ -291,12 +312,12 @@ class TUIView:
             for idx, channel in enumerate(channels):
                 current_indicator = " (현재 선택됨)" if self.app_state.current_channel and self.app_state.current_channel.id == channel.id else ""
                 text += f"  [{idx + 1}] #{channel.name} (ID: {channel.id}){current_indicator}\n"
-        text += "-------------------------------------------\n"
+        text += "-------------------------------------------"
         self._display_info(text)
 
     async def handle_channel_selected(self, channel_name: str):
         logger.debug("Handling CHANNEL_SELECTED event.")
-        self._display_info(f"\n[성공] 채널이 설정되었습니다: #{channel_name}\n")
+        self._display_info(f"\n[성공] 채널이 설정되었습니다: #{channel_name}")
 
     async def handle_messages_updated(self, *args):
         logger.debug("Handling MESSAGES_UPDATED event for channel: %s", self.app_state.current_channel.name)
@@ -330,7 +351,7 @@ class TUIView:
 
     async def handle_delete_message_complete(self, m_id: int):
         logger.debug("Handling DELETE_MESSAGE_COMPLETE event.")
-        self._display_info(f"\n[Success] delete message id: {m_id}\n")
+        self._display_info(f"\n[Success] delete message id: {m_id}")
 
     def _restore_original_handler(self):
         """입력 핸들러를 원래 상태로 복원합니다."""
@@ -452,4 +473,4 @@ class TUIView:
     async def handle_file_download_complete(self, file_path: str):
         """파일 다운로드 완료 메시지를 TUI에 표시합니다."""
         logger.info("Handling FILE_DOWNLOAD_COMPLETE event for path: %s", file_path)
-        self._add_message_to_log([('class:info', f"\n[성공] 파일이 성공적으로 다운로드 되었습니다. -> 저장 경로: {file_path}\n")])
+        self._add_message_to_log([('class:info', f"\n[성공] 파일이 성공적으로 다운로드 되었습니다. -> 저장 경로: {file_path}")])

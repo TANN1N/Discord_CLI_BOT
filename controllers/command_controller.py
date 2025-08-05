@@ -76,7 +76,7 @@ class CommandController:
             if len(cmd_key) > 4: # 단축 명령어는 제외하고 긴 명령어만 도움말에 표시
                 doc = func.__doc__.strip() if func.__doc__ else "설명 없음."
                 help_text += f"{cmd_key:<15} - {doc}\n"
-        help_text += ("--------------------------\n")
+        help_text += ("--------------------------")
         await self.event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, help_text)
         return False
 

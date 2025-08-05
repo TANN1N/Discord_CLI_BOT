@@ -20,7 +20,7 @@ class EventType(Enum):
     
     # --- Guild/Server Events ---
     GUILDS_UPDATED = auto()
-    GUILD_SELECT_REQUSET = auto()
+    GUILD_SELECT_REQUEST = auto()
     GUILD_SELECTED = auto()
     
     # --- Channel Events ---
@@ -48,6 +48,7 @@ class EventType(Enum):
     MESSAGE_SEND_COMPLETED = auto()
     
     # --- File Events ---
+    FILE_SEND_REQUEST = auto()
     FILE_SEND_COMPLETED = auto()
     
     FILES_LIST_FETCH_REQUEST = auto()
