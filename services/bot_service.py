@@ -23,8 +23,8 @@ class DiscordBotService:
         self.event_manager = event_manager
         self._cached_channels: list[discord.TextChannel] = []
         logger.debug("Registering file-related event listeners...")
-        self.event_manager.subscribe(EventType.FILES_LIST_REQUESTED, self.fetch_recent_files)
-        self.event_manager.subscribe(EventType.FILE_DOWNLOAD_REQUESTED, self.download_file_by_index)
+        self.event_manager.subscribe(EventType.FILES_LIST_FETCH_REQUEST, self.fetch_recent_files)
+        self.event_manager.subscribe(EventType.FILE_DOWNLOAD_REQUEST, self.download_file_by_index)
         logger.info("DiscordBotService initialized.")
 
     async def get_all_guilds_info(self) -> bool:
@@ -81,7 +81,7 @@ class DiscordBotService:
             logger.info("Cached %d text channels for guild '%s'.", len(self.app_state.available_channels), guild_found.name)
             
             await self.event_manager.publish(EventType.GUILD_SELECTED, guild_found.name)
-            await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED)
+            await self.event_manager.publish(EventType.CHANNELS_UPDATED)
             return True
         
         logger.warning("Could not find guild with value: '%s'", value)
@@ -161,7 +161,7 @@ class DiscordBotService:
             await self.event_manager.publish(EventType.ERROR, f"메시지 가져오기 실패: {e}")
         
         self.app_state.recent_messages = list(reversed(messages))
-        await self.event_manager.publish(EventType.MESSAGES_UPDATED)
+        await self.event_manager.publish(EventType.MESSAGES_RECENT_UPDATED)
         return True
 
     async def fetch_recent_self_messages(self, limit: int = 50) -> bool:
@@ -193,7 +193,7 @@ class DiscordBotService:
             await self.event_manager.publish(EventType.ERROR, f"메시지 가져오기 실패: {e}")
         
         self.app_state.recent_self_messages = list(messages)
-        await self.event_manager.publish(EventType.SELF_MESSAGES_UPDATED)
+        await self.event_manager.publish(EventType.MESSAGES_SELF_UPDATED)
         return True
 
     async def delete_self_message(self, index: int = 0):
@@ -209,7 +209,7 @@ class DiscordBotService:
             logger.debug("Trying to delete message %d", m_id)
             await message.delete()
             logger.debug("Message deleted successfully")
-            await self.event_manager.publish(EventType.DELETE_MESSAGE_COMPLETE, m_id)
+            await self.event_manager.publish(EventType.MESSAGE_DELETE_COMPLETED, m_id)
 
         except IndexError as e:
             logger.exception("IndexError to get message at recent self messages (index %d)", index)
@@ -263,7 +263,7 @@ class DiscordBotService:
             file_path = os.path.join(DOWNLOADS_DIR, attachment.filename)
             
             logger.info("Starting download for '%s' from URL: %s", attachment.filename, attachment.url)
-            await self.event_manager.publish(EventType.SHOW_TEXT, f"[정보] '{attachment.filename}' 다운로드 시작...")
+            await self.event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, f"[정보] '{attachment.filename}' 다운로드 시작...")
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(attachment.url) as resp:
@@ -271,7 +271,7 @@ class DiscordBotService:
                         async with aiofiles.open(file_path, mode='wb') as f:
                             await f.write(await resp.read())
                         logger.info("File downloaded successfully to '%s'", os.path.abspath(file_path))
-                        await self.event_manager.publish(EventType.FILE_DOWNLOAD_COMPLETE, file_path)
+                        await self.event_manager.publish(EventType.FILE_DOWNLOAD_COMPLETED, file_path)
                     else:
                         logger.error("Error downloading file '%s': status %d", attachment.filename, resp.status)
                         await self.event_manager.publish(EventType.ERROR, f"'{attachment.filename}' 다운로드 실패 (HTTP 상태: {resp.status})")
@@ -292,7 +292,7 @@ class DiscordBotService:
         
         try:
             message = await self.app_state.current_channel.send(content)
-            await self.event_manager.publish(EventType.MESSAGE_SENT_SUCCESS, message)
+            await self.event_manager.publish(EventType.MESSAGE_SENT_COMPLETED, message)
             return True
         except discord.errors.Forbidden:
             logger.warning(
@@ -324,7 +324,7 @@ class DiscordBotService:
             logger.info("Attempting to send file '%s' to #%s", file_path, self.app_state.current_channel.name)
             discord_file = discord.File(file_path)
             message = await self.app_state.current_channel.send(content=content, file=discord_file)
-            await self.event_manager.publish(EventType.FILE_SENT_SUCCESS, message) # File sent success Event pub
+            await self.event_manager.publish(EventType.FILE_SENT_COMPLETED, message) # File sent success Event pub
             logger.info("Successfully sent file '%s'", file_path)
         except discord.errors.Forbidden:
             logger.warning(

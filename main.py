@@ -73,24 +73,24 @@ async def main():
     @bot.event
     async def on_ready():
         logger.info("Bot is ready. Logged in as %s (ID: %s)", bot.user.name, bot.user.id)
-        await event_manager.publish(EventType.SHOW_TEXT, f"\n--- 봇 연결 성공! ---")
-        await event_manager.publish(EventType.SHOW_TEXT, f"로그인 완료: {bot.user.name} (ID: {bot.user.id})")
-        await event_manager.publish(EventType.BOT_READY) # Notify view that the bot is ready
+        await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, f"\n--- 봇 연결 성공! ---")
+        await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, f"로그인 완료: {bot.user.name} (ID: {bot.user.id})")
+        await event_manager.publish(EventType.BOT_STATUS_READY) # Notify view that the bot is ready
 
     @bot.event
     async def on_connect():
         logger.debug("Connecting to discord...")
-        await event_manager.publish(EventType.SHOW_TEXT, "Discord에 연결 중...")
+        await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "Discord에 연결 중...")
 
     @bot.event
     async def on_disconnect():
         logger.debug("Connection lost")
-        await event_manager.publish(EventType.SHOW_TEXT, "Discord에서 연결 끊김.")
+        await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "Discord에서 연결 끊김.")
 
     @bot.event
     async def on_resumed():
         logger.debug("Connection resumed")
-        await event_manager.publish(EventType.SHOW_TEXT, "Discord 연결 재개됨.")
+        await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "Discord 연결 재개됨.")
 
     # 7. Start Bot and CLI concurrently
     try:
@@ -102,13 +102,13 @@ async def main():
         await asyncio.wait([bot_task, tui_task], return_when="FIRST_COMPLETED")
 
     except KeyboardInterrupt:
-        await event_manager.publish(EventType.SHOW_TEXT, "\n사용자에 의해 봇 시작이 중단되었습니다.")
+        await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "\n사용자에 의해 봇 시작이 중단되었습니다.")
     except Exception as e:
         await event_manager.publish(EventType.ERROR, f"\nFATAL ERROR: 봇 시작 중 오류가 발생했습니다: {e}")
     finally:
         if bot and not bot.is_closed():
             await bot.close()
-            await event_manager.publish(EventType.SHOW_TEXT, "봇이 성공적으로 종료되었습니다.")
+            await event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "봇이 성공적으로 종료되었습니다.")
 
 
 if __name__ == "__main__":

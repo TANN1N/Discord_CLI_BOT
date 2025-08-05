@@ -77,7 +77,7 @@ class CommandController:
                 doc = func.__doc__.strip() if func.__doc__ else "설명 없음."
                 help_text += f"{cmd_key:<15} - {doc}\n"
         help_text += ("--------------------------\n")
-        await self.event_manager.publish(EventType.SHOW_TEXT, help_text)
+        await self.event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, help_text)
         return False
 
     async def _list_guilds(self, arg: str) -> bool:
@@ -98,7 +98,7 @@ class CommandController:
     async def _list_channels(self, arg: str) -> bool:
         """현재 선택된 서버의 채널 목록을 표시합니다."""
         if self.app_state.current_guild:
-            await self.event_manager.publish(EventType.AVAILABLE_CHANNELS_UPDATED)
+            await self.event_manager.publish(EventType.CHANNELS_UPDATED)
         else:
             await self.event_manager.publish(EventType.ERROR, "채널 목록을 보려면 먼저 서버를 선택해 주세요. '/setguild' 사용.")
         return False
@@ -161,7 +161,7 @@ class CommandController:
 
     async def _clear(self, arg: str) -> bool:
         """터미널 화면을 지웁니다."""
-        await self.event_manager.publish(EventType.CLEAR_DISPLAY)
+        await self.event_manager.publish(EventType.UI_DISPLAY_CLEAR_REQUEST)
         return False
 
     async def _multiline_input(self, arg: str) -> bool:
@@ -169,14 +169,14 @@ class CommandController:
         async def on_complete(text: str):
             if text.strip():
                 await self.bot_service.send_message(text)
-        await self.event_manager.publish(EventType.REQUEST_MULTILINE_INPUT, on_complete)
+        await self.event_manager.publish(EventType.UI_MULTILINE_INPUT_REQUEST, on_complete)
         return False
 
     async def _attach_file(self, arg: str) -> bool:
         """지정된 파일을 현재 채널에 첨부합니다. (예: /a C:/path/file.png '캡션')"""
         async def on_complete(file_path: str, caption: str | None):
             await self.bot_service.send_file(file_path, caption)
-        await self.event_manager.publish(EventType.REQUEST_FILE_INPUT, on_complete, arg)
+        await self.event_manager.publish(EventType.UI_FILE_INPUT_REQUEST, on_complete, arg)
         return False
 
     async def _list_files(self, arg: str) -> bool:
@@ -196,8 +196,8 @@ class CommandController:
                 await self.event_manager.publish(EventType.ERROR, "스캔할 메시지 개수는 숫자여야 합니다.")
                 return False
         
-        await self.event_manager.publish(EventType.SHOW_TEXT, f"[정보] 최근 {limit}개 메시지에서 파일을 검색합니다...")
-        await self.event_manager.publish(EventType.FILES_LIST_REQUESTED, limit)
+        await self.event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, f"[정보] 최근 {limit}개 메시지에서 파일을 검색합니다...")
+        await self.event_manager.publish(EventType.FILES_LIST_FETCH_REQUEST, limit)
         return False
 
     async def _download_file(self, arg: str) -> bool:
@@ -217,11 +217,11 @@ class CommandController:
                 await self.event_manager.publish(EventType.ERROR, "파일 인덱스는 숫자여야 합니다.")
                 return False
 
-        await self.event_manager.publish(EventType.FILE_DOWNLOAD_REQUESTED, index)
+        await self.event_manager.publish(EventType.FILE_DOWNLOAD_REQUEST, index)
         return False
 
     async def _quit(self, arg: str) -> bool:
         """봇을 종료합니다."""
-        await self.event_manager.publish(EventType.SHOW_TEXT, "[정보] 봇을 종료합니다...")
+        await self.event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "[정보] 봇을 종료합니다...")
         await self.bot_service.bot.close()
         return True

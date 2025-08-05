@@ -3,43 +3,55 @@ from enum import Enum, auto
 
 class EventType(Enum):
     """
-    발행할 수 있는 이벤트 타입을 enum으로 명시적으로 지정함으로써 오타로 인한 오류를 방지.
-    IDE의 자동완성 기능을 사용할 수 있도록 함.
+    사용되는 이벤트 타입을 enum으로 명시적으로 지정함.
+    (객체 중심 명명 규칙: OBJECT_ACTION_STATUS 적용)
     """
     
-    # General Events
+    # --- General & UI Events ---
     ERROR = auto()
-    SHOW_TEXT = auto()
-    CLEAR_DISPLAY = auto()
     
-    # UI Interaction Events
-    REQUEST_MULTILINE_INPUT = auto()
-    REQUEST_FILE_INPUT = auto()
+    UI_TEXT_SHOW_REQUEST = auto()
+    UI_DISPLAY_CLEAR_REQUEST = auto()
+    UI_MULTILINE_INPUT_REQUEST = auto()
+    UI_FILE_INPUT_REQUEST = auto()
     
-    # Bot Status Events
-    BOT_READY = auto()
+    # --- Bot Status Events ---
+    BOT_STATUS_READY = auto()
     
-    # Guild/Server Events
+    # --- Guild/Server Events ---
     GUILDS_UPDATED = auto()
+    GUILD_SELECT_REQUSET = auto()
     GUILD_SELECTED = auto()
     
-    # Channel Events
-    AVAILABLE_CHANNELS_UPDATED = auto()
+    # --- Channel Events ---
+    CHANNELS_UPDATED = auto()
+    CHANNEL_SELECT_REQUEST = auto()
     CHANNEL_SELECTED = auto()
     
-    # Message Events
-    MESSAGES_UPDATED = auto()
-    SELF_MESSAGES_UPDATED = auto()
-    # TODO: Add and implement 2 event below
-    DELETE_MESSAGE_COMPLETE = auto()
-    # EDIT_MESSAGE_REQUESTED = auto
-    MESSAGE_SENT_SUCCESS = auto()
-    FILE_SENT_SUCCESS = auto()
+    # --- Message Events ---
+    MESSAGE_RECEIVED = auto()
     
-    # File Download Events
-    FILES_LIST_REQUESTED = auto()
+    MESSAGES_RECENT_FETCH_REQUEST = auto()
+    MESSAGES_RECENT_UPDATED = auto()
+    
+    MESSAGES_SELF_FETCH_REQUEST = auto()
+    MESSAGES_SELF_UPDATED = auto()
+    
+    MESSAGE_DELETE_REQUEST = auto()
+    MESSAGE_DELETE_COMPLETED = auto()
+    
+    # TODO Add Edit message feature
+    # REQUEST_EDIT_MESSAGE = auto()
+    # EDIT_MESSAGE_COMPLETE = auto()
+    
+    MESSAGE_SEND_REQUEST = auto()
+    MESSAGE_SEND_COMPLETED = auto()
+    
+    # --- File Events ---
+    FILE_SEND_COMPLETED = auto()
+    
+    FILES_LIST_FETCH_REQUEST = auto()
     FILES_LIST_UPDATED = auto()
-    FILE_DOWNLOAD_REQUESTED = auto()
-    FILE_DOWNLOAD_COMPLETE = auto()
     
-    NEW_INCOMING_MESSAGE = auto()
+    FILE_DOWNLOAD_REQUEST = auto()
+    FILE_DOWNLOAD_COMPLETED = auto()
