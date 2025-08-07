@@ -31,6 +31,7 @@ class CommandController:
             '/setchannel': self._set_channel, '/sc': self._set_channel,
             '/read': self._read, '/r': self._read,
             '/self_messages': self._get_self_messages, '/sm': self._get_self_messages,
+            '/edit': self._edit_self_message, '/e': self._edit_self_message,
             '/delete': self._delete_self_message, '/d': self._delete_self_message,
             '/multiline': self._multiline_input, '/ml': self._multiline_input,
             '/attach': self._attach_file, '/a': self._attach_file,
@@ -140,6 +141,28 @@ class CommandController:
                 await self.event_manager.publish(EventType.ERROR, "삭제할 메시지의 인덱스는 숫자여야 합니다.")
                 return False
         await self.event_manager.publish(EventType.MESSAGE_DELETE_REQUEST, index)
+        return False
+
+    async def _edit_self_message(self, arg: str) -> bool:
+        """선택된 자신의 메시지를 수정 모드에서 엽니다."""
+        index = 0
+        if arg:
+            try:
+                index = int(arg) - 1
+                if not (0 <= index < len(self.app_state.recent_self_messages)):
+                    await self.event_manager.publish(EventType.ERROR, "삭제할 메시지의 인덱스는 캐시된 메시지 범위 안에 있어야 합니다.")
+                    return False
+            except ValueError:
+                await self.event_manager.publish(EventType.ERROR, "삭제할 메시지의 인덱스는 숫자여야 합니다.")
+                return False
+
+        # 수정할 메시지 객체와 원본 내용을 가져옴
+        message_to_edit = self.app_state.recent_self_messages[index]
+        original_content = message_to_edit.content
+
+        async def on_edit_complete(new_content: str):
+            await self.event_manager.publish(EventType.MESSAGE_EDIT_REQUEST, index, new_content)
+        await self.event_manager.publish(EventType.UI_EDIT_INPUT_REQUEST, original_content, on_edit_complete)
         return False
 
     async def _clear(self, arg: str) -> bool:

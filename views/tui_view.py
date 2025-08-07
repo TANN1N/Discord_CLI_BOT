@@ -36,6 +36,8 @@ class TUIView:
         self._ml_lines = None
         self._file_input_on_complete = None
         self._file_input_path = None
+        self._edit_on_complete = None
+        self._message_to_edit = None
         
         # 초기 설정을 위한 컴포넌트
         self.session = PromptSession()
@@ -91,6 +93,8 @@ class TUIView:
                 return [('class:prompt.multiline', 'File Path > ')]
             else:
                 return [('class:prompt.multiline', 'Caption (optional) > ')]
+        if self.input_buffer.accept_handler == self._handle_edit_message_input:
+            return [('class:prompt.multiline', 'EDIT MESSAGE > ')]
 
         guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
         channel_name = f"#{self.app_state.current_channel.name}" if self.app_state.current_channel else "No Channel"
@@ -139,6 +143,8 @@ class TUIView:
         self.event_manager.subscribe(EventType.MESSAGES_RECENT_UPDATED, self.handle_messages_updated)
         self.event_manager.subscribe(EventType.MESSAGES_SELF_UPDATED, self.handle_self_messages_updated)
         self.event_manager.subscribe(EventType.MESSAGE_DELETE_COMPLETED, self.handle_delete_message_complete)
+        self.event_manager.subscribe(EventType.UI_EDIT_INPUT_REQUEST, self._handle_edit_message)
+        self.event_manager.subscribe(EventType.MESSAGE_EDIT_COMPLETED, self._handle_edit_message_complete)
         self.event_manager.subscribe(EventType.UI_MULTILINE_INPUT_REQUEST, self.handle_request_multiline_input)
         self.event_manager.subscribe(EventType.UI_FILE_INPUT_REQUEST, self.handle_request_file_input)
         self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
@@ -346,11 +352,15 @@ class TUIView:
                 # 메시지의 내용이 너무 길 수 있으므로 최대 20자까지만 표시하도록 함
                 self._add_message_to_log([('', f"  [{idx + 1}] {msg.content[:20]}")])
             self._add_message_to_log([('class:info', "--------------------------------------------------")])
-            self._add_message_to_log([('', "삭제하기 위해서는 '/delete <인덱스>'를 입력하세요.")])
+            self._add_message_to_log([('', "편집하기 위해서는 '/edit <인덱스>'를 삭제하기 위해서는 '/delete <인덱스>'를 입력하세요.")])
 
     async def handle_delete_message_complete(self, m_id: int):
         logger.debug("Handling DELETE_MESSAGE_COMPLETE event.")
         self._display_info(f"\n[Success] delete message id: {m_id}")
+
+    def _handle_edit_message_complete(self, m_id: int):
+        logger.debug("Handling MESSAGE_EDIT_COMPLETED event.")
+        self._display_info(f"\n[Success] edit message id: {m_id}")
 
     def _restore_original_handler(self):
         """입력 핸들러를 원래 상태로 복원합니다."""
@@ -363,6 +373,32 @@ class TUIView:
         self._ml_on_complete = None
         self._file_input_path = None
         self._file_input_on_complete = None
+        self._edit_on_complete = None
+        self._message_to_edit = None
+
+    def _handle_edit_message_input(self, buffer: Buffer):
+        """메시지 편집을 처리하는 핸들러"""
+        user_input = buffer.text.strip()
+        buffer.text = ""
+        if self._edit_on_complete:
+            asyncio.create_task(self._edit_on_complete(user_input))
+        self._restore_original_handler()
+        return True
+
+    def _handle_edit_message(self, message_to_edit: str, on_complete: Callable):
+        logger.debug("Handling REQUEST_MESSAGE_EDIT event.")
+
+        self._edit_on_complete = on_complete
+        self._original_accept_handler = self.input_buffer.accept_handler
+        self.input_buffer.accept_handler = self._handle_edit_message_input
+        
+        info_text = "\n--- 메시지 편집 모드 ---\n" \
+                    "  메시지를 편집하세요. 취소하려면 아무것도 입력하지 않고 Enter를 누르세요.\n" \
+                    "--------------------------"
+        self._add_message_to_log([('class:info', info_text)])
+        self.input_buffer.text = message_to_edit
+        self.input_buffer.cursor_position = len(message_to_edit)
+        logger.info("Switched to message edit mode.")
 
     def _handle_file_input(self, buffer: Buffer):
         """파일 경로와 캡션 입력을 순차적으로 처리하는 핸들러."""
@@ -398,7 +434,7 @@ class TUIView:
     async def handle_request_file_input(self, on_complete: Callable, initial_arg: str):
         """파일 첨부를 위한 입력을 처리하는 임시 핸들러를 설정합니다."""
         logger.debug("Handling REQUEST_FILE_INPUT event.")
-        if self.input_buffer.accept_handler in [self._handle_multiline_input, self._handle_file_input]:
+        if self.input_buffer.accept_handler in [self._handle_multiline_input, self._handle_file_input, self._handle_edit_message_input]:
             await self.handle_error("다른 입력 모드가 이미 활성화되어 있습니다.")
             return
 

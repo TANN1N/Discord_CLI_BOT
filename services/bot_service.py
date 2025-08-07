@@ -29,6 +29,7 @@ class DiscordBotService:
         self.event_manager.subscribe(EventType.MESSAGES_RECENT_FETCH_REQUEST, self.fetch_recent_messages)
         self.event_manager.subscribe(EventType.MESSAGES_SELF_FETCH_REQUEST, self.fetch_recent_self_messages)
         self.event_manager.subscribe(EventType.MESSAGE_DELETE_REQUEST, self.delete_self_message)
+        self.event_manager.subscribe(EventType.MESSAGE_EDIT_REQUEST, self.edit_self_message)
         self.event_manager.subscribe(EventType.FILE_SEND_REQUEST, self.send_file)
         self.event_manager.subscribe(EventType.FILES_LIST_FETCH_REQUEST, self.fetch_recent_files)
         self.event_manager.subscribe(EventType.FILE_DOWNLOAD_REQUEST, self.download_file_by_index)
@@ -236,6 +237,40 @@ class DiscordBotService:
         message = self.app_state.recent_self_messages.pop(index)
         await self.event_manager.publish(EventType.MESSAGE_DELETE_COMPLETED, m_id)
 
+    async def edit_self_message(self, index: int, edited_message: str):
+        """캐시된 자신의 메시지에서 해당하는 인덱스에 해당하는 메시지를 수정합니다."""
+        if not self.app_state.recent_self_messages:
+            logger.warning("app_state.recent_self_messages is empty")
+            await self.event_manager.publish(EventType.ERROR, "먼저 /self_messages를 사용해 자신의 메시지를 캐싱해주세요.")
+            return
+        
+        try:
+            message = self.app_state.recent_self_messages[index]
+            m_id = message.id
+        except IndexError as e:
+            logger.exception("IndexError to get message at recent self messages (index %d)", index)
+        
+        if message.content == edited_message:
+            logger.debug("Message edit cancled")
+            await self.event_manager.publish(EventType.UI_TEXT_SHOW_REQUEST, "메시지 편집이 취소되었습니다.")
+            return
+        
+        try:
+            logger.debug("Trying to edit message %d", m_id)
+            await message.edit(content=edited_message)
+        except discord.errors.Forbidden:
+            logger.warning("Forbidden to edit message %d", message.id)
+            await self.event_manager.publish(EventType.ERROR, "메시지를 수정하기 위한 권한이 없습니다.")
+        except discord.errors.NotFound:
+            logger.warning("NotFound to edit message %d", message.id)
+            await self.event_manager.publish(EventType.ERROR, "메시지가 이미 삭제되었습니다.")
+        except Exception as e:
+            logger.exception("An unexpected error occurred during editing message for index %d.", index)
+            await self.event_manager.publish(EventType.ERROR, f"메시지 편집 중 예외 발생: {e}")
+        logger.info("Message with ID %s edit successfully from Discord.", m_id)
+        
+        message = self.app_state.recent_self_messages.pop(index)
+        await self.event_manager.publish(EventType.MESSAGE_EDIT_COMPLETED, m_id)
 
     async def fetch_recent_files(self, limit: int = 50) -> bool:
         """현재 채널의 최근 파일들을 가져와 file_cache에 캐싱하고 성공 여부를 반환합니다."""

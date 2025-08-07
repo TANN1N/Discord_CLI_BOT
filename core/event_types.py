@@ -14,6 +14,7 @@ class EventType(Enum):
     UI_DISPLAY_CLEAR_REQUEST = auto()
     UI_MULTILINE_INPUT_REQUEST = auto()
     UI_FILE_INPUT_REQUEST = auto()
+    UI_EDIT_INPUT_REQUEST = auto()
     
     # --- Bot Status Events ---
     BOT_STATUS_READY = auto()
@@ -40,9 +41,8 @@ class EventType(Enum):
     MESSAGE_DELETE_REQUEST = auto()
     MESSAGE_DELETE_COMPLETED = auto()
     
-    # TODO Add Edit message feature
-    # REQUEST_EDIT_MESSAGE = auto()
-    # EDIT_MESSAGE_COMPLETE = auto()
+    MESSAGE_EDIT_REQUEST = auto()
+    MESSAGE_EDIT_COMPLETED = auto()
     
     MESSAGE_SEND_REQUEST = auto()
     MESSAGE_SEND_COMPLETED = auto()
