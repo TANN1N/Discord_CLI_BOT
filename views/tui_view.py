@@ -44,8 +44,7 @@ class TUIView:
         # TUI 컴포넌트
         self.message_window = TextArea(
             scrollbar=True,
-            wrap_lines=True,
-            focus_on_click=True
+            wrap_lines=True
         )
 
         self.input_field = TextArea(
