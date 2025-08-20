@@ -216,8 +216,8 @@ class CommandController:
         if arg:
             try:
                 index = int(arg) - 1
-                if not (1 <= index <= len(self.app_state.file_cache)):
-                    await self.event_manager.publish(EventType.ERROR, f"유효하지 않은 인덱스입니다. 1에서 {len(self.app_state.file_cache)} 사이의 숫자를 입력해 주세요.")
+                if not (0 <= index < len(self.app_state.file_cache)):
+                    await self.event_manager.publish(EventType.ERROR, "다운로드 할 파일의 인덱스는 캐시된 메시지 범위 안에 있어야 합니다.")
                     return False
             except ValueError:
                 await self.event_manager.publish(EventType.ERROR, "파일 인덱스는 숫자여야 합니다.")
