@@ -11,6 +11,7 @@ eggs/
 *.egg-info/
 .env
 venv/
+.venv/
 env/
 .pytest_cache/
 .coverage
@@ -30,3 +31,6 @@ htmlcov/
 bot.txt
 .crush/
 CRUSH.md
+.python-version
+pyproject.toml
+uv.lock
