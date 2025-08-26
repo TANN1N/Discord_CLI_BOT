@@ -35,7 +35,6 @@ def setup_logging():
     log_dir = os.path.join(project_root, 'logs')
     
     os.makedirs(log_dir, exist_ok=True)
-    _cleanup_old_logs(log_dir)
     log_filename = datetime.now().strftime("bot_%Y-%m-%d_%H-%M-%S.log")
     
     file_handler = logging.FileHandler(os.path.join(log_dir, log_filename), encoding='utf-8')
@@ -51,9 +50,11 @@ def setup_logging():
 
     logging.info("Logging system has been initialized.")
     logging.debug(f"File log level set to: {log_level_str}")
+    _cleanup_old_logs(log_dir)
 
 def _cleanup_old_logs(log_dir: str, max_files: int = 10):
     """지정된 디렉터리에서 가장 오래된 로그 파일을 정리합니다."""
+    logging.info("Checking for old log files...")
     try:
         files = [os.path.join(log_dir, f) for f in os.listdir(log_dir) if f.endswith(".log")]
         files.sort(key=os.path.getctime)
