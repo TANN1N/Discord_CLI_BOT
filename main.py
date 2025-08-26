@@ -28,7 +28,6 @@ from cogs.chatbridge import ChatBridge
 
 logger = logging.getLogger(__name__)
 
-
 async def main():
     # 0. Initialize Logging
     load_dotenv()
