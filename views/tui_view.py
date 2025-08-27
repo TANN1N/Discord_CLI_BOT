@@ -21,7 +21,6 @@ from controllers.command_controller import CommandController
 
 logger = logging.getLogger(__name__)
 
-# TODO 출력 창에서의 입력 제한 하야 함
 class TUIView:
     def __init__(self, controller: CommandController, app_state: AppState, event_manager: EventManager):
         self.controller = controller
@@ -216,7 +215,6 @@ class TUIView:
             
             if self.app_state.current_channel:
                 logger.info("Channel '%s' selected successfully.", self.app_state.current_channel.name)
-                await self.event_manager.publish(EventType.MESSAGES_RECENT_FETCH_REQUEST)
                 return True
             logger.warning("Failed to select channel with input: '%s'. Retrying.", channel_input)
             print("[실패] 다시 시도해 주세요.")
