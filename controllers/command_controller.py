@@ -98,12 +98,12 @@ class CommandController:
 
     # TODO Continue refactor 
     async def _read(self, arg: str) -> bool:
-        """현재 채널의 최근 메시지를 지정된 개수(기본값 20)만큼 불러옵니다."""
-        limit = 20
+        """현재 채널의 최근 메시지를 지정된 개수(기본값 50)만큼 불러옵니다."""
+        limit = 50
         if arg:
             try:
                 limit = int(arg)
-                if not (1 <= limit <= 100):
+                if not (1 <= limit <= 500):
                     await self.event_manager.publish(EventType.ERROR, "읽을 메시지 개수는 1에서 100 사이여야 합니다.")
                     return False
             except ValueError:

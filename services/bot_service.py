@@ -143,7 +143,7 @@ class DiscordBotService:
         await self.event_manager.publish(EventType.ERROR, "유효하지 않은 채널 인덱스, ID 또는 이름입니다.")
         return False
 
-    async def fetch_recent_messages(self, limit: int = 20) -> bool:
+    async def fetch_recent_messages(self, limit: int = 50) -> bool:
         """
         현재 채널의 최근 메시지를 가져와 app_state에 업데이트합니다.
         성공 여부를 반환합니다. 
