@@ -14,10 +14,9 @@ from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import TextArea
 
-from models.app_state import AppState
-from core.event_manager import EventManager
-from core.event_types import EventType
-from controllers.command_controller import CommandController
+from models import AppState
+from core import EventManager, EventType
+from controllers import CommandController
 
 logger = logging.getLogger(__name__)
 

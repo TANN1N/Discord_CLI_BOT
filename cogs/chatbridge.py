@@ -2,8 +2,7 @@ import discord
 import logging
 from discord.ext import commands
 
-from core.event_manager import EventManager
-from core.event_types import EventType
+from core import EventManager, EventType
 
 logger = logging.getLogger(__name__)
 

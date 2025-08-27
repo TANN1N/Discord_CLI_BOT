@@ -9,11 +9,9 @@ from datetime import timedelta
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
-from models.app_state import AppState
-from core.event_manager import EventManager
-from core.event_types import EventType
-from controllers.command_controller import CommandController
-from models import app_state
+from models import AppState
+from core import EventManager, EventType
+from controllers import CommandController
 
 logger = logging.getLogger(__name__)
 

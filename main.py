@@ -7,24 +7,22 @@ from discord import Intents
 from dotenv import load_dotenv
 
 # Core
-from core.event_manager import EventManager
-from core.event_types import EventType
-from core.logger import setup_logging
+from core import EventManager, EventType, setup_logging
 
 # Models
-from models.app_state import AppState
+from models import AppState
 
 # Controllers
-from controllers.command_controller import CommandController
+from controllers import CommandController
 
 # Views
-from views.tui_view import TUIView
+from views import TUIView
 
 # Services
-from services.bot_service import DiscordBotService
+from services import DiscordBotService
 
 # Cogs
-from cogs.chatbridge import ChatBridge
+from cogs import ChatBridge
 
 logger = logging.getLogger(__name__)
 

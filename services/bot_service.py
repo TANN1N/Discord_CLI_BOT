@@ -8,9 +8,8 @@ import discord
 from discord.ext import commands
 from datetime import timedelta
 
-from models.app_state import AppState
-from core.event_manager import EventManager
-from core.event_types import EventType
+from models import AppState
+from core import EventManager, EventType
 
 logger = logging.getLogger(__name__)
 

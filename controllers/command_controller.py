@@ -3,10 +3,9 @@ import asyncio
 import logging
 from typing import Callable
 
-from services.bot_service import DiscordBotService 
-from models.app_state import AppState
-from core.event_manager import EventManager
-from core.event_types import EventType
+from services import DiscordBotService 
+from models import AppState
+from core import EventManager, EventType
 
 logger = logging.getLogger(__name__)
 
