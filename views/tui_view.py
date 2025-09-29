@@ -236,8 +236,8 @@ class TUIView:
         """Discord 메시지 객체를 TUI에 표시할 서식 있는 텍스트 튜플 리스트로 포맷팅합니다."""
         timestamp = (message.created_at + timedelta(hours=9)).strftime("%m/%d %H:%M:%S")
         
-        content = message.content
-        # 멘션 처리 (CLI와 동일)
+        content = message.content or ""
+        # --- Content & Mentions
         for member in message.mentions:
             display_name = member.display_name
             content = content.replace(f"<@{member.id}>", f"@{display_name}")
@@ -253,17 +253,37 @@ class TUIView:
         formatted_list = [
             ('class:timestamp', f'[{timestamp}] '),
             ('class:author', f'{author_display}'),
-            ('', ': '),
-            ('', content)
+            ('', ': ')
         ]
+        if content:
+            formatted_list.append(('',content))
         
-        # 첨부 파일 처리
+        # --- Attachments ---
         if message.attachments:
             attachment_texts = [f"📁 {att.filename}" for att in message.attachments]
             separator = "\n" if content else ""
             attachment_str = f"{separator}[Attachment(s): {', '.join(attachment_texts)}]";
             formatted_list.append(('class:attachment', attachment_str))
-            
+        
+        # --- Embeds ---
+        if message.embeds:
+            for embed in message.embeds:
+                # Title
+                if embed.title:
+                    formatted_list.append(('class:embed_title', f"\n📌 {embed.title}"))
+                
+                # Description
+                if embed.description:
+                    formatted_list.append(('class:embed_desc', f"\n{embed.description}"))
+
+                # Fields
+                for field in embed.fields:
+                    formatted_list.append(('class:embed_field', f"\n-{field.name}: {field.value}"))
+                
+                # Footer
+                if embed.footer and embed.footer.text:
+                    formatted_list.append(('class:embed_footer', f"\n*{embed.footer.text}*"))
+        
         return formatted_list
 
     # --- Event Handlers ---
