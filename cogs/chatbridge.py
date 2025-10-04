@@ -26,8 +26,7 @@ class ChatBridge(commands.Cog):
 
         if message.author != self.bot.user:
             logger.debug(
-                "New message received in #%s from %s: %s",
+                "New message received in #%s from %s",
                 message.channel.name,
-                message.author.name,
-                message.content
+                message.author.name
             )
