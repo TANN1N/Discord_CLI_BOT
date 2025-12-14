@@ -3,3 +3,4 @@ python-dotenv
 prompt_toolkit
 aiohttp
 aiofiles
+pillow
