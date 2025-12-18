@@ -18,6 +18,8 @@ from models import AppState
 from core import EventManager, EventType
 from controllers import CommandController
 
+from .states import InputState, NormalState, MultilineState, FileInputState, EditState
+
 logger = logging.getLogger(__name__)
 
 class TUIView:
@@ -28,14 +30,7 @@ class TUIView:
         self.is_running = True
         self.app = None
         
-        # 핸들러 교체를 위한 변수
-        self._original_accept_handler = None
-        self._ml_on_complete = None
-        self._ml_lines = None
-        self._file_input_on_complete = None
-        self._file_input_path = None
-        self._edit_on_complete = None
-        self._message_to_edit = None
+        self.current_state: InputState = NormalState(self)
         
         # 초기 설정을 위한 컴포넌트
         self.session = PromptSession()
@@ -53,8 +48,7 @@ class TUIView:
             prompt=self._get_prompt_text
         )
         self.input_buffer = self.input_field.buffer
-        # _accept_input을 기본 핸들러로 설정
-        self.input_buffer.accept_handler = self._accept_input
+        self.input_field.buffer.accept_handler = self._accept_input_wrapper
 
         self.root_container = HSplit([
             self.message_window,
@@ -78,35 +72,40 @@ class TUIView:
         self.key_bindings.add('c-d')(self._handle_exit)
         self.key_bindings.add('tab')(self._focus_next)
 
+    async def transition_to(self, new_state: InputState):
+        if self.current_state:
+            await self.current_state.on_exit()
+        
+        self.current_state = new_state
+        await self.current_state.on_enter()
+        
+        # TODO: 키 바인딩 업데이트 (확장성)
+        # self.app.key_bindings = self.current_state.get_key_bindings()
+        # 주의: prompt_toolkit에서 동적 키바인딩 교체는 MergedKeyBindings 등을 활용해야 함
+
     def _focus_next(self, _):
         """레이아웃의 다음 위젯으로 포커스를 이동시킵니다."""
         self.layout.focus_next()
 
     def _get_prompt_text(self):
-        # 다중 라인 모드일 때 프롬프트 변경
-        if self.input_buffer.accept_handler == self._handle_multiline_input:
-            return [('class:prompt.multiline', 'ML MODE (@END to finish) > ')]
-        if self.input_buffer.accept_handler == self._handle_file_input:
-            if self._file_input_path is None:
-                return [('class:prompt.multiline', 'File Path > ')]
-            else:
-                return [('class:prompt.multiline', 'Caption (optional) > ')]
-        if self.input_buffer.accept_handler == self._handle_edit_message_input:
-            return [('class:prompt.multiline', 'EDIT MESSAGE > ')]
+        return self.current_state.get_prompt_text()
 
-        guild_name = self.app_state.current_guild.name if self.app_state.current_guild else "No Guild"
-        channel_name = f"#{self.app_state.current_channel.name}" if self.app_state.current_channel else "No Channel"
-        return f"[{guild_name} | {channel_name}]> "
-
-    def _accept_input(self, buffer: Buffer) -> bool:
-        """사용자가 엔터를 눌렀을 때 호출되는 기본 핸들러."""
+    def _accept_input_wrapper(self, buffer: Buffer) -> bool:
         user_input = buffer.text.strip()
-        
-        if user_input:
-            asyncio.create_task(self._process_input_async(user_input))
-        
+        asyncio.create_task(self.current_state.on_accept(user_input))
+
         buffer.text = ""
         return True
+
+    # def _accept_input(self, buffer: Buffer) -> bool:
+    #     """사용자가 엔터를 눌렀을 때 호출되는 기본 핸들러."""
+    #     user_input = buffer.text.strip()
+        
+    #     if user_input:
+    #         asyncio.create_task(self._process_input_async(user_input))
+        
+    #     buffer.text = ""
+    #     return True
 
     async def _process_input_async(self, user_input: str):
         try:
@@ -379,134 +378,20 @@ class TUIView:
         logger.debug("Handling MESSAGE_EDIT_COMPLETED event.")
         self._display_info(f"\n[Success] edit message id: {m_id}")
 
-    def _restore_original_handler(self):
-        """입력 핸들러를 원래 상태로 복원합니다."""
-        if self._original_accept_handler:
-            self.input_buffer.accept_handler = self._original_accept_handler
-            self._original_accept_handler = None
-        
-        # 상태 초기화
-        self._ml_lines = None
-        self._ml_on_complete = None
-        self._file_input_path = None
-        self._file_input_on_complete = None
-        self._edit_on_complete = None
-        self._message_to_edit = None
-
-    def _handle_edit_message_input(self, buffer: Buffer):
-        """메시지 편집을 처리하는 핸들러"""
-        user_input = buffer.text.strip()
-        buffer.text = ""
-        if self._edit_on_complete:
-            asyncio.create_task(self._edit_on_complete(user_input))
-        self._restore_original_handler()
-        return True
-
-    def _handle_edit_message(self, message_to_edit: str, on_complete: Callable):
-        logger.debug("Handling REQUEST_MESSAGE_EDIT event.")
-
-        self._edit_on_complete = on_complete
-        self._original_accept_handler = self.input_buffer.accept_handler
-        self.input_buffer.accept_handler = self._handle_edit_message_input
-        
-        info_text = "\n--- 메시지 편집 모드 ---\n" \
-                    "  메시지를 편집하세요. 취소하려면 아무것도 입력하지 않고 Enter를 누르세요.\n" \
-                    "--------------------------"
-        self._add_message_to_log([('class:info', info_text)])
-        self.input_buffer.text = message_to_edit
-        self.input_buffer.cursor_position = len(message_to_edit)
-        logger.info("Switched to message edit mode.")
-
-    def _handle_file_input(self, buffer: Buffer):
-        """파일 경로와 캡션 입력을 순차적으로 처리하는 핸들러."""
-        user_input = buffer.text.strip()
-        buffer.text = ""
-
-        # 파일 경로 입력 단계
-        if self._file_input_path is None:
-            if not user_input:  # 사용자가 입력을 취소한 경우
-                self._add_message_to_log([('class:info', "파일 첨부가 취소되었습니다.")])
-                self._restore_original_handler()
-                return True
-            
-            self._file_input_path = user_input
-            # 다음 프롬프트(캡션)를 위해 버퍼를 비워 둔다.
-            return True
-
-        # 캡션 입력 단계
-        else:
-            caption = user_input
-            file_path = self._file_input_path
-            on_complete = self._file_input_on_complete
-
-            self._add_message_to_log([('class:info', "파일 첨부 요청이 전송되었습니다.")])
-            self._restore_original_handler()
-            logger.info("File input mode finished. Restored original accept handler.")
-            
-            if on_complete:
-                asyncio.create_task(on_complete(file_path, caption))
-            
-            return True
+    async def _handle_edit_message(self, on_complete: Callable, message_to_edit: str):
+        """메시지 수정 상태에 진입합니다."""
+        logger.debug("Handling UI_EDIT_INPUT_REQUEST event.")
+        await self.transition_to(EditState(self, on_complete, message_to_edit))
 
     async def handle_request_file_input(self, on_complete: Callable, initial_arg: str):
-        """파일 첨부를 위한 입력을 처리하는 임시 핸들러를 설정합니다."""
-        logger.debug("Handling REQUEST_FILE_INPUT event.")
-        if self.input_buffer.accept_handler in [self._handle_multiline_input, self._handle_file_input, self._handle_edit_message_input]:
-            await self.handle_error("다른 입력 모드가 이미 활성화되어 있습니다.")
-            return
-
-        self._file_input_on_complete = on_complete
-        self._original_accept_handler = self.input_buffer.accept_handler
-        self.input_buffer.accept_handler = self._handle_file_input
-        
-        info_text = "\n--- 파일 첨부 모드 ---\n" \
-                    "  파일 경로를 입력하세요. 취소하려면 아무것도 입력하지 않고 Enter를 누르세요.\n" \
-                    "--------------------------"
-        self._add_message_to_log([('class:info', info_text)])
-        logger.info("Switched to file input mode.")
-
-    def _handle_multiline_input(self, buffer: Buffer) -> bool:
-        """다중 라인 입력을 처리하는 임시 핸들러."""
-        line = buffer.text
-        buffer.text = "" # 다음 입력을 위해 비움
-
-        if line.strip().upper() == '@END':
-            if self._ml_lines and self._ml_on_complete:
-                full_message = "\n".join(self._ml_lines)
-                # on_complete가 코루틴이므로 asyncio.create_task로 실행
-                asyncio.create_task(self._ml_on_complete(full_message))
-
-            self._restore_original_handler()
-            self._add_message_to_log([('class:info', "다중 라인 입력 모드가 종료되었습니다.")])
-            logger.info("Multiline input mode finished. Restored original accept handler.")
-        
-        elif self._ml_lines is not None:
-            self._ml_lines.append(line)
-        
-        return True
+        """파일 첨부 상태에 진입합니다."""
+        logger.debug("Handling UI_FILE_INPUT_REQUEST event.")
+        await self.transition_to(FileInputState(self, on_complete, initial_arg))
 
     async def handle_request_multiline_input(self, on_complete: Callable):
-        """다중 라인 입력 모드를 시작하고 accept 핸들러를 교체합니다."""
-        logger.debug("Handling REQUEST_MULTILINE_INPUT event.")
-        
-        # 이미 다중 라인 모드인 경우 중복 실행 방지
-        if self.input_buffer.accept_handler == self._handle_multiline_input:
-            await self.handle_error("Already in multiline input mode.")
-            return
-
-        self._ml_lines = []
-        self._ml_on_complete = on_complete
-
-        # 핸들러 교체
-        self._original_accept_handler = self.input_buffer.accept_handler
-        self.input_buffer.accept_handler = self._handle_multiline_input
-        
-        info_text = "\n--- 여러 줄 메시지 입력 모드 ---\n" \
-                    "  입력을 마치려면 새 줄에 '@END'를 입력하고 Enter를 누르세요.\n" \
-                    "---------------------------------"
-        self._add_message_to_log([('class:info', info_text)])
-        
-        logger.info("Switched to multiline input mode.")
+        """다중 라인 입력 상태에 진입합니다."""
+        logger.debug("Handling UI_MULTILINE_INPUT_REQUEST event.")
+        await self.transition_to(MultilineState(self, on_complete))
 
     async def handle_files_list_updated(self, *args):
         """캐시된 파일 목록을 TUI에 표시합니다."""
