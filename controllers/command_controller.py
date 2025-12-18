@@ -161,7 +161,7 @@ class CommandController:
 
         async def on_edit_complete(new_content: str):
             await self.event_manager.publish(EventType.MESSAGE_EDIT_REQUEST, index, new_content)
-        await self.event_manager.publish(EventType.UI_EDIT_INPUT_REQUEST, original_content, on_edit_complete)
+        await self.event_manager.publish(EventType.UI_EDIT_INPUT_REQUEST, on_edit_complete, original_content)
         return False
 
     async def _clear(self, arg: str) -> bool:
