@@ -19,7 +19,7 @@ class NormalState(InputState):
                 command = parts[0].lower()
                 arg = parts[1] if len(parts) > 1 else ""
                 if await self.view.controller.handle_command(command, arg):
-                    self.is_running = False
+                    self.view.is_running = False
                     if self.view.app: self.view.app.exit()
             else:
                 await self.view.event_manager.publish(EventType.MESSAGE_SEND_REQUEST, text)
