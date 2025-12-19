@@ -17,7 +17,8 @@
 이 프로젝트는 **MVC-S (Model-View-Controller-Service)** 패턴과 **TUI(Text-based User Interface)**, **이벤트 기반(Event-Driven)** 구조를 채택하여 각 컴포넌트의 역할을 명확히 분리하고 결합도를 낮췄습니다.
 
 -   **Model (`models/app_state.py`)**: 애플리케이션의 상태(현재 서버/채널, 메시지 목록 등)를 관리하는 데이터 클래스입니다.
--   **View (`views/cli_view.py`, `views/tui_view.py`)**: 사용자에게 보여지는 CLI/TUI 화면을 렌더링하고, 사용자 입력을 받아 Controller에 전달합니다. `prompt_toolkit`을 사용하여 CLI/TUI 환경을 구성합니다.
+-   **View (`views/tui_view.py`)**: 사용자에게 보여지는 TUI 화면을 렌더링하고, 사용자 입력을 받아 Controller에 전달합니다. `prompt_toolkit`을 사용하여 TUI 환경을 구성합니다.
+    - **`states`**: TUI 환경을 구성하는 데 필요한 상태를 state pattern으로 분리했습니다.
 -   **Controller (`controllers/command_controller.py`)**: `/help`, `/setguild` 등과 같은 사용자 명령어를 해석하고, 이에 맞는 비즈니스 로직을 Service에 요청하는 역할을 합니다.
 -   **Service (`services/bot_service.py`)**: Discord API와 직접 통신하며 봇의 핵심 비즈니스 로직(메시지 전송, 채널 목록 조회 등)을 수행합니다.
 -   **Core System (`core/`)**:
@@ -34,8 +35,8 @@ discord_cli_bot/
 ├── models/
 │   └── app_state.py            # (M) 애플리케이션 상태 모델
 ├── views/
-│   ├── cli_view.py             # (V) CLI 사용자 인터페이스
 │   └── tui_view.py             # (V) TUI 사용자 인터페이스
+│   └── states/                 # TUI 구성에 필요한 state classs
 ├── controllers/
 │   └── command_controller.py   # (C) 사용자 명령어 처리
 ├── services/
