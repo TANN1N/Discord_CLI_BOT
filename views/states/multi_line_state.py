@@ -3,6 +3,7 @@ from core import EventType
 from .states import InputState
 from .normal_state import NormalState
 from prompt_toolkit.key_binding import KeyBindings
+import asyncio
 
 class MultilineState(InputState):
     def __init__(self, view, on_complete):
@@ -20,11 +21,30 @@ class MultilineState(InputState):
     async def on_accept(self, text: str):
         if text.strip().upper() == '@END':
             full_message = "\n".join(self.lines)
-            await self.on_complete(full_message)
-            # 작업 완료 후 일반 상태로 복귀
-            await self.view.transition_to(NormalState(self.view))
+            await self._submit_message(full_message)
         else:
             self.lines.append(text)
 
     def get_prompt_text(self):
         return [('class:prompt.multiline', 'ML MODE (@END to finish) > ')]
+
+    def get_key_bindings(self) -> KeyBindings:
+        kb = KeyBindings()
+        
+        @kb.add('escape', 'enter')
+        def _(event):
+            current_text = self.view.input_buffer.text
+            if current_text:
+                self.lines.append(current_text)
+            
+            full_message = "\n".join(self.lines)
+            
+            asyncio.create_task(self._submit_message(full_message))
+            
+            self.view.input_buffer.text = ""
+        
+        return kb
+    
+    async def _submit_message(self, message):
+        await self.on_complete(message)
+        await self.view.transition_to(NormalState(self.view))

@@ -35,8 +35,4 @@ class NormalState(InputState):
         return f"[{guild_name} | {channel_name}]> "
     
     def get_key_bindings(self) -> KeyBindings:
-        self.key_bindings = KeyBindings()
-        self.key_bindings.add('c-c')(self.view._handle_exit)
-        self.key_bindings.add('c-d')(self.view._handle_exit)
-        self.key_bindings.add('tab')(self.view._focus_next)
-        return self.key_bindings
+        return super().get_key_bindings()

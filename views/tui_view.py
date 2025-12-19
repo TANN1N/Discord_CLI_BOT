@@ -7,7 +7,7 @@ from typing import Callable, List
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import Application
 from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
@@ -67,10 +67,14 @@ class TUIView:
             'prompt.multiline': 'bg:#00aaff #ffffff',
         })
 
-        self.key_bindings = KeyBindings()
-        self.key_bindings.add('c-c')(self._handle_exit)
-        self.key_bindings.add('c-d')(self._handle_exit)
-        self.key_bindings.add('tab')(self._focus_next)
+        self.global_bindings = KeyBindings()
+        self.global_bindings.add('c-c')(self._handle_exit)
+        self.global_bindings.add('c-d')(self._handle_exit)
+        self.global_bindings.add('tab')(self._focus_next)
+
+    def _get_merged_key_bindings(self):
+        state_bindings = self.current_state.get_key_bindings()
+        return merge_key_bindings([self.global_bindings, state_bindings])
 
     async def transition_to(self, new_state: InputState):
         if self.current_state:
@@ -79,9 +83,8 @@ class TUIView:
         self.current_state = new_state
         await self.current_state.on_enter()
         
-        # TODO: 키 바인딩 업데이트 (확장성)
-        # self.app.key_bindings = self.current_state.get_key_bindings()
-        # 주의: prompt_toolkit에서 동적 키바인딩 교체는 MergedKeyBindings 등을 활용해야 함
+        if self.app:
+            self.app.key_bindings = self._get_merged_key_bindings()
 
     def _focus_next(self, _):
         """레이아웃의 다음 위젯으로 포커스를 이동시킵니다."""
@@ -96,16 +99,6 @@ class TUIView:
 
         buffer.text = ""
         return True
-
-    # def _accept_input(self, buffer: Buffer) -> bool:
-    #     """사용자가 엔터를 눌렀을 때 호출되는 기본 핸들러."""
-    #     user_input = buffer.text.strip()
-        
-    #     if user_input:
-    #         asyncio.create_task(self._process_input_async(user_input))
-        
-    #     buffer.text = ""
-    #     return True
 
     async def _process_input_async(self, user_input: str):
         try:
@@ -164,7 +157,7 @@ class TUIView:
         self._add_message_to_log([('class:info', "[정보] 명령어 도움말은 '/help'를 입력해 주세요.")])
         self.app = Application(
             layout=self.layout,
-            key_bindings=self.key_bindings,
+            key_bindings=self._get_merged_key_bindings(),
             style=self.style,
             full_screen=True,
             mouse_support=True

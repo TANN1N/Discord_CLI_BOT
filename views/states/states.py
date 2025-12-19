@@ -27,6 +27,7 @@ class InputState(ABC):
         """현재 상태에 맞는 프롬프트 텍스트 반환"""
         pass
     
-    async def get_key_bindings(self) -> KeyBindings:
+    @abstractmethod
+    def get_key_bindings(self) -> KeyBindings:
         """(선택)해당 상태 전용 키 바인딩 반환"""
         return KeyBindings()
