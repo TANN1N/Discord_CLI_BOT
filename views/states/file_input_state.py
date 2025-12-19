@@ -39,3 +39,6 @@ class FileInputState(InputState):
             return [('class:prompt.multiline', 'File Path > ')]
         else:
             return [('class:prompt.multiline', 'Caption (optional) > ')]
+    
+    def get_key_bindings(self) -> KeyBindings:
+        return super().get_key_bindings()
