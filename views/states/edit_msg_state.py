@@ -1,10 +1,11 @@
 from typing import Any, Callable
 from core import EventType
-from .states import InputState
+from .abstract_tui_state import AbstractTUIState
 from .normal_state import NormalState
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import AnyContainer
 
-class EditState(InputState):
+class EditState(AbstractTUIState):
     def __init__(self, view, on_complete: Callable, message_to_edit: str):
         super().__init__(view)
         self.on_complete = on_complete
@@ -28,3 +29,9 @@ class EditState(InputState):
     
     def get_prompt_text(self):
         return [('class:info', 'EDIT MODE > ')]
+    
+    def get_key_bindings(self) -> KeyBindings:
+        return super().get_key_bindings()
+    
+    def get_layout_container(self) -> AnyContainer:
+        return super().get_layout_container()

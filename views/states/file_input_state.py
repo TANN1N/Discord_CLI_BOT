@@ -1,18 +1,21 @@
-from typing import Any
+from typing import Any, Callable
 from core import EventType
-from .states import InputState
-from .normal_state import NormalState
-from prompt_toolkit.key_binding import KeyBindings
 
-class FileInputState(InputState):
-    def __init__(self, view, on_complete, initial_path=None):
+from .abstract_tui_state import AbstractTUIState
+from .normal_state import NormalState
+
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import AnyContainer
+
+class FileInputState(AbstractTUIState):
+    def __init__(self, view, on_complete: Callable, initial_path=None):
         super().__init__(view)
         self.on_complete = on_complete
         self.file_path = initial_path
         self.caption = None
 
     async def on_enter(self):
-        self.logger.debug("Entered Fileinput State")
+        self.logger.debug("Entered FileInput State")
         self.view._add_message_to_log([('class:info', "\n--- 파일 첨부 모드 ---\n")])
 
     async def on_exit(self):
@@ -22,7 +25,7 @@ class FileInputState(InputState):
         # 1단계: 파일 경로 입력
         if self.file_path is None:
             if not text: # 취소
-                self.view._add_message_to_log([('class:info', "취소됨")])
+                self.view._add_message_to_log([('class:info', "파일 첨부 취소됨")])
                 await self.view.transition_to(NormalState(self.view))
                 return
             self.file_path = text.strip()
@@ -39,6 +42,9 @@ class FileInputState(InputState):
             return [('class:prompt.multiline', 'File Path > ')]
         else:
             return [('class:prompt.multiline', 'Caption (optional) > ')]
+    
+    def get_layout_container(self) -> AnyContainer:
+        return super().get_layout_container()
     
     def get_key_bindings(self) -> KeyBindings:
         return super().get_key_bindings()
