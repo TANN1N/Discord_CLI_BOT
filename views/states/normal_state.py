@@ -1,9 +1,10 @@
 from typing import Any
 from core import EventType
-from .states import InputState
+from .abstract_tui_state import AbstractTUIState
+from prompt_toolkit.layout.containers import AnyContainer
 from prompt_toolkit.key_binding import KeyBindings
 
-class NormalState(InputState):
+class NormalState(AbstractTUIState):
     async def on_enter(self):
         self.logger.debug("Entered Normal State")
     
@@ -33,6 +34,9 @@ class NormalState(InputState):
         guild_name = app_state.current_guild.name if app_state.current_guild else "No Guild"
         channel_name = f"#{app_state.current_channel.name}" if app_state.current_channel else "No Channel"
         return f"[{guild_name} | {channel_name}]> "
+    
+    def get_layout_container(self) -> AnyContainer:
+        return super().get_layout_container()
     
     def get_key_bindings(self) -> KeyBindings:
         return super().get_key_bindings()

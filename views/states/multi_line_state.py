@@ -1,11 +1,12 @@
 from typing import Any
 from core import EventType
-from .states import InputState
+from .abstract_tui_state import AbstractTUIState
 from .normal_state import NormalState
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import AnyContainer
 import asyncio
 
-class MultilineState(InputState):
+class MultilineState(AbstractTUIState):
     def __init__(self, view, on_complete):
         super().__init__(view)
         self.on_complete = on_complete
@@ -24,6 +25,9 @@ class MultilineState(InputState):
             await self._submit_message(full_message)
         else:
             self.lines.append(text)
+
+    def get_layout_container(self) -> AnyContainer:
+        return super().get_layout_container()
 
     def get_prompt_text(self):
         return [('class:prompt.multiline', 'ML MODE (@END to finish) > ')]
