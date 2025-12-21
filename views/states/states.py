@@ -1,12 +1,14 @@
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC, abstractmethod
 import logging
-import asyncio
+from prompt_toolkit.layout.containers import AnyContainer
 from prompt_toolkit.key_binding import KeyBindings
 
-class InputState(ABC):
+class AbstractTUIState(ABC):
     def __init__(self, view):
         self.view = view
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.layout = self.view.layout
+    
     @abstractmethod
     async def on_enter(self):
         """상태 진입 시 실행(예: 안내 메시지 출력, 키 바인딩 변경, 로깅 등)"""
@@ -21,6 +23,10 @@ class InputState(ABC):
     async def on_accept(self, text: str):
         """사용자가 엔터를 쳤을 때의 동작"""
         pass
+    
+    @abstractmethod
+    def get_layout_container(self) -> AnyContainer:
+        return self.layout
     
     @abstractmethod
     async def get_prompt_text(self) -> str:
