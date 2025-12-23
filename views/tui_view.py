@@ -18,7 +18,7 @@ from models import AppState
 from core import EventManager, EventType
 from controllers import CommandController
 
-from .states import InputState, NormalState, MultilineState, FileInputState, EditState
+from .states import *
 
 logger = logging.getLogger(__name__)
 
@@ -30,18 +30,16 @@ class TUIView:
         self.is_running = True
         self.app = None
         
-        self.current_state: InputState = NormalState(self)
-        
         # 초기 설정을 위한 컴포넌트
         self.session = PromptSession()
         self.is_bot_ready = asyncio.Event()
-
+        
         # TUI 컴포넌트
         self.message_window = TextArea(
             scrollbar=True,
             wrap_lines=True
         )
-
+        
         self.input_field = TextArea(
             multiline=False,
             wrap_lines=False,
@@ -49,7 +47,7 @@ class TUIView:
         )
         self.input_buffer = self.input_field.buffer
         self.input_field.buffer.accept_handler = self._accept_input_wrapper
-
+        
         self.root_container = HSplit([
             self.message_window,
             Window(height=1, char='-'),
@@ -66,17 +64,19 @@ class TUIView:
             'info': '#0088ff',
             'prompt.multiline': 'bg:#00aaff #ffffff',
         })
-
+        
         self.global_bindings = KeyBindings()
         self.global_bindings.add('c-c')(self._handle_exit)
         self.global_bindings.add('c-d')(self._handle_exit)
         self.global_bindings.add('tab')(self._focus_next)
+        
+        self.current_state: AbstractTUIState = NormalState(self)
 
     def _get_merged_key_bindings(self):
         state_bindings = self.current_state.get_key_bindings()
         return merge_key_bindings([self.global_bindings, state_bindings])
 
-    async def transition_to(self, new_state: InputState):
+    async def transition_to(self, new_state: AbstractTUIState):
         if self.current_state:
             await self.current_state.on_exit()
         
