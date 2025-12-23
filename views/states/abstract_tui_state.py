@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
-from prompt_toolkit.layout.containers import AnyContainer
+from prompt_toolkit.layout.containers import Container
 from prompt_toolkit.key_binding import KeyBindings
 
 class AbstractTUIState(ABC):
@@ -25,7 +25,7 @@ class AbstractTUIState(ABC):
         pass
     
     @abstractmethod
-    def get_layout_container(self) -> AnyContainer:
+    def get_layout_container(self) -> Container:
         return self.layout
     
     @abstractmethod
