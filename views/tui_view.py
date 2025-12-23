@@ -139,7 +139,7 @@ class TUIView:
         self.event_manager.subscribe(EventType.UI_FILE_INPUT_REQUEST, self.handle_request_file_input)
         self.event_manager.subscribe(EventType.FILES_LIST_UPDATED, self.handle_files_list_updated)
         self.event_manager.subscribe(EventType.FILE_DOWNLOAD_COMPLETED, self.handle_file_download_complete)
-        self.event_manager.subscribe(EventType.UI_FILE_PREVIEW_SHOW, self.handle_unsupported_feature)
+        # self.event_manager.subscribe(EventType.UI_FILE_PREVIEW_SHOW, self.handle_unsupported_feature)
         logger.info("TUI event listeners registered.")
 
     async def run_tui(self):
